@@ -64,7 +64,15 @@
     
     // Determine data type and card ID
     const dataType = getDataType(url);
-    const cardId = extractCardId(url);
+    let cardId = extractCardId(url);
+    
+    // For card_tracker, try to get card ID from the current page URL
+    if (dataType === 'card_tracker' && !cardId) {
+      const pageMatch = window.location.pathname.match(/\/cards\/your-cards\/([a-f0-9]+)/);
+      if (pageMatch) {
+        cardId = pageMatch[1];
+      }
+    }
     
     // Store organized by card ID and data type
     chrome.storage.local.get(['cardData'], function(result) {
@@ -85,8 +93,8 @@
         };
         
         console.log(`[HeyMax SubCaps Viewer] Stored ${dataType} for card ${cardId}`);
-      } else if (dataType === 'card_tracker') {
-        // card_tracker doesn't have a specific card ID
+      } else if (dataType === 'card_tracker' && !cardId) {
+        // card_tracker on main listing page (no specific card ID)
         cardData['card_tracker'] = {
           data: data,
           timestamp: timestamp,
@@ -94,7 +102,7 @@
           status: status
         };
         
-        console.log('[HeyMax SubCaps Viewer] Stored card_tracker data');
+        console.log('[HeyMax SubCaps Viewer] Stored card_tracker data (global)');
       }
       
       // Save the updated cardData structure

@@ -48,11 +48,13 @@ The extension stores API data in Chrome's local storage organized by card ID:
 cardData: {
   "7a30eab609ef58b8914c4633342ce19a": {
     "transactions": { data: {...}, timestamp: "2025-11-02T12:00:00.000Z", url: "...", status: 200 },
-    "summary": { data: {...}, timestamp: "2025-11-02T12:00:00.000Z", url: "...", status: 200 }
+    "summary": { data: {...}, timestamp: "2025-11-02T12:00:00.000Z", url: "...", status: 200 },
+    "card_tracker": { data: {...}, timestamp: "2025-11-02T12:00:00.000Z", url: "...", status: 200 }
   },
   "abc123def456": {
     "transactions": { data: {...}, timestamp: "2025-11-02T12:01:00.000Z", url: "...", status: 200 },
-    "summary": { data: {...}, timestamp: "2025-11-02T12:01:00.000Z", url: "...", status: 200 }
+    "summary": { data: {...}, timestamp: "2025-11-02T12:01:00.000Z", url: "...", status: 200 },
+    "card_tracker": { data: {...}, timestamp: "2025-11-02T12:01:00.000Z", url: "...", status: 200 }
   },
   "card_tracker": { data: {...}, timestamp: "2025-11-02T12:02:00.000Z", url: "...", status: 200 }
 }
@@ -61,7 +63,9 @@ cardData: {
 Each card ID maintains the latest values for:
 - **transactions**: Latest transaction data for that card
 - **summary**: Latest summary data for that card
-- **card_tracker**: Global card tracker data (stored separately)
+- **card_tracker**: Card tracker data for that specific card (when viewed on detail pages like `/details` or `/reward-cycles`)
+
+The `card_tracker` key at the root level stores global card tracker data when accessed from the main listing page (`https://heymax.ai/cards/your-cards/`)
 
 ## Testing
 
