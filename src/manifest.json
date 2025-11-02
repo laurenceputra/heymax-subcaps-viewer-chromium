@@ -3,9 +3,7 @@
   "name": "HeyMax SubCaps Viewer",
   "version": "1.0.0",
   "description": "Chrome extension to monitor network requests and log API responses for UOB SubCaps calculation",
-  "permissions": [
-    "storage"
-  ],
+  "permissions": [],
   "host_permissions": [
     "<all_urls>"
   ],
