@@ -21,6 +21,37 @@
     (document.head || document.documentElement).appendChild(script);
   }
 
+  // Extract card ID from URL
+  function extractCardId(url) {
+    // Extract ID from patterns like:
+    // /api/spend_tracking/cards/{id}/transactions
+    // /api/spend_tracking/cards/{id}/summary
+    const match = url.match(/\/api\/spend_tracking\/cards\/([a-f0-9]+)\//);
+    if (match) {
+      return match[1];
+    }
+    
+    // If URL has double slashes (e.g., /cards//summary), extract ID from current page URL
+    if (url.includes('/cards//')) {
+      const pageMatch = window.location.pathname.match(/\/cards\/your-cards\/([a-f0-9]+)/);
+      return pageMatch ? pageMatch[1] : null;
+    }
+    
+    return null;
+  }
+
+  // Determine the data type from URL
+  function getDataType(url) {
+    if (url.includes('/transactions')) {
+      return 'transactions';
+    } else if (url.includes('/summary')) {
+      return 'summary';
+    } else if (url.includes('/card_tracker')) {
+      return 'card_tracker';
+    }
+    return null;
+  }
+
   // Listen for API response events from the injected script
   window.addEventListener('apiResponseLogged', function(event) {
     const { method, url, status, data, timestamp } = event.detail;
@@ -31,7 +62,48 @@
     console.log('  URL:', url);
     console.log('  Status:', status);
     
-    // Store in chrome.storage for potential later use
+    // Determine data type and card ID
+    const dataType = getDataType(url);
+    const cardId = extractCardId(url);
+    
+    // Store organized by card ID and data type
+    chrome.storage.local.get(['cardData'], function(result) {
+      const cardData = result.cardData || {};
+      
+      if (dataType && cardId) {
+        // Initialize card object if it doesn't exist
+        if (!cardData[cardId]) {
+          cardData[cardId] = {};
+        }
+        
+        // Store the latest data for this card ID and data type
+        cardData[cardId][dataType] = {
+          data: data,
+          timestamp: timestamp,
+          url: url,
+          status: status
+        };
+        
+        console.log(`[HeyMax SubCaps Viewer] Stored ${dataType} for card ${cardId}`);
+      } else if (dataType === 'card_tracker') {
+        // card_tracker doesn't have a specific card ID
+        cardData['card_tracker'] = {
+          data: data,
+          timestamp: timestamp,
+          url: url,
+          status: status
+        };
+        
+        console.log('[HeyMax SubCaps Viewer] Stored card_tracker data');
+      }
+      
+      // Save the updated cardData structure
+      chrome.storage.local.set({ cardData: cardData }, function() {
+        console.log('[HeyMax SubCaps Viewer] Card data updated in chrome.storage');
+      });
+    });
+    
+    // Also keep a log of all responses for debugging (optional)
     chrome.storage.local.get(['apiResponses'], function(result) {
       const responses = result.apiResponses || [];
       responses.push({
@@ -46,7 +118,7 @@
       const trimmedResponses = responses.slice(-100);
       
       chrome.storage.local.set({ apiResponses: trimmedResponses }, function() {
-        console.log('[HeyMax SubCaps Viewer] Response stored in chrome.storage');
+        console.log('[HeyMax SubCaps Viewer] Response logged in apiResponses');
       });
     });
   });

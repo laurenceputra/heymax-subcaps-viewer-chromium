@@ -40,6 +40,29 @@ For each network request, the extension logs:
 - **URL**: The request URL
 - **Response Data**: The response body (JSON parsed if content-type is application/json, otherwise as text)
 
+## Data Storage
+
+The extension stores API data in Chrome's local storage organized by card ID:
+
+```javascript
+cardData: {
+  "7a30eab609ef58b8914c4633342ce19a": {
+    "transactions": { data: {...}, timestamp: "2025-11-02T12:00:00.000Z", url: "...", status: 200 },
+    "summary": { data: {...}, timestamp: "2025-11-02T12:00:00.000Z", url: "...", status: 200 }
+  },
+  "abc123def456": {
+    "transactions": { data: {...}, timestamp: "2025-11-02T12:01:00.000Z", url: "...", status: 200 },
+    "summary": { data: {...}, timestamp: "2025-11-02T12:01:00.000Z", url: "...", status: 200 }
+  },
+  "card_tracker": { data: {...}, timestamp: "2025-11-02T12:02:00.000Z", url: "...", status: 200 }
+}
+```
+
+Each card ID maintains the latest values for:
+- **transactions**: Latest transaction data for that card
+- **summary**: Latest summary data for that card
+- **card_tracker**: Global card tracker data (stored separately)
+
 ## Testing
 
 Test files are available in `src/test/` for development and verification purposes.
