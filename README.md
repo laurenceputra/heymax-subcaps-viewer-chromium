@@ -14,14 +14,14 @@ A Chrome extension using Manifest V3 that monitors network requests and logs API
 
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable **Developer mode** (toggle in top-right corner)
-3. Click **"Load unpacked"** and select this directory
+3. Click **"Load unpacked"** and select the `src` directory
 4. Open any website and check the browser console for `[Network Monitor]` messages
 
 ## Documentation
 
 - **[EXTENSION_README.md](EXTENSION_README.md)** - Comprehensive extension documentation
-- **[TESTING.md](TESTING.md)** - Detailed testing instructions
-- **[test.html](test.html)** - Interactive test page to verify functionality
+- **[src/test/TESTING.md](src/test/TESTING.md)** - Detailed testing instructions
+- **[src/test/test.html](src/test/test.html)** - Interactive test page to verify functionality
 
 ## How It Works
 
@@ -33,12 +33,12 @@ The extension injects a monitoring script that:
 
 ## Testing
 
-Open `test.html` in Chrome to interactively test:
+Open `src/test/test.html` in Chrome to interactively test:
 - Fetch API interception
 - XMLHttpRequest interception  
 - Patch protection and recovery
 
-See [TESTING.md](TESTING.md) for detailed instructions.
+See [src/test/TESTING.md](src/test/TESTING.md) for detailed instructions.
 
 ## License
 

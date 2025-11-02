@@ -14,7 +14,7 @@ A Chrome extension using Manifest V3 that monitors network requests by monkey pa
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable "Developer mode" (toggle in the top-right corner)
 3. Click "Load unpacked"
-4. Select the directory containing this extension
+4. Select the `src` directory from this repository
 
 ## Usage
 
@@ -45,17 +45,22 @@ chrome.storage.local.get(['apiResponses'], function(result) {
 
 ```
 .
-├── manifest.json          # Extension manifest (Manifest V3)
-├── content.js            # Content script that injects the monitoring script
-├── injected.js           # Main monkey patching and monitoring logic
-├── test.html             # Interactive test page for manual testing
-├── icon16.png            # Extension icon (16x16)
-├── icon48.png            # Extension icon (48x48)
-├── icon128.png           # Extension icon (128x128)
-├── EXTENSION_README.md   # This file - extension documentation
-├── TESTING.md            # Testing instructions and guidelines
+├── .gitignore
+├── LICENSE
+├── README.md              # Main repository README
+├── EXTENSION_README.md    # This file - extension documentation
 └── src/
-    └── calculate_buckets.js  # Pre-existing application logic (not part of extension)
+    ├── manifest.json      # Extension manifest (Manifest V3)
+    ├── content.js         # Content script that injects the monitoring script
+    ├── injected.js        # Main monkey patching and monitoring logic
+    ├── calculate_buckets.js  # Pre-existing application logic
+    ├── assets/
+    │   ├── icon16.png     # Extension icon (16x16)
+    │   ├── icon48.png     # Extension icon (48x48)
+    │   └── icon128.png    # Extension icon (128x128)
+    └── test/
+        ├── test.html      # Interactive test page for manual testing
+        └── TESTING.md     # Testing instructions and guidelines
 ```
 
 ## How It Works

@@ -7,7 +7,7 @@
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable **Developer mode** (toggle in the top-right corner)
 3. Click **"Load unpacked"**
-4. Select the repository directory containing `manifest.json`
+4. Select the `src` directory from the repository
 5. Verify the extension appears in the list with a green icon
 
 ### 2. Test the Extension
