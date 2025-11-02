@@ -48,11 +48,14 @@ chrome.storage.local.get(['apiResponses'], function(result) {
 ├── manifest.json          # Extension manifest (Manifest V3)
 ├── content.js            # Content script that injects the monitoring script
 ├── injected.js           # Main monkey patching and monitoring logic
+├── test.html             # Interactive test page for manual testing
 ├── icon16.png            # Extension icon (16x16)
 ├── icon48.png            # Extension icon (48x48)
 ├── icon128.png           # Extension icon (128x128)
+├── EXTENSION_README.md   # This file - extension documentation
+├── TESTING.md            # Testing instructions and guidelines
 └── src/
-    └── calculate_buckets.js  # Original bucket calculation logic
+    └── calculate_buckets.js  # Pre-existing application logic (not part of extension)
 ```
 
 ## How It Works
