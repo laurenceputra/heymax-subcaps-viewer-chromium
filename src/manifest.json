@@ -20,7 +20,7 @@
   "web_accessible_resources": [
     {
       "resources": ["injected.js"],
-      "matches": ["https://heymax.ai/cards/your-cards/*"]
+      "matches": ["*://heymax.ai/*"]
     }
   ],
   "icons": {
