@@ -19,17 +19,6 @@
 
     // Inject as early as possible
     (document.head || document.documentElement).appendChild(script);
-    
-    // Also inject calculate_buckets.js for UI usage
-    const calcScript = document.createElement('script');
-    calcScript.src = chrome.runtime.getURL('calculate_buckets.js');
-    calcScript.onload = function() {
-      console.log('[HeyMax SubCaps Viewer] Calculate buckets script loaded successfully');
-    };
-    calcScript.onerror = function() {
-      console.error('[HeyMax SubCaps Viewer] Failed to load calculate buckets script');
-    };
-    (document.head || document.documentElement).appendChild(calcScript);
   }
 
   // Extract card ID from URL

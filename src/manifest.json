@@ -19,7 +19,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["injected.js", "calculate_buckets.js"],
+      "resources": ["injected.js"],
       "matches": ["*://heymax.ai/*"]
     }
   ],
