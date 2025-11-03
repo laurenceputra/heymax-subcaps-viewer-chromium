@@ -2,12 +2,18 @@
 
 A Chrome extension using Manifest V3 that monitors network requests by monkey patching fetch() and XMLHttpRequest, and ensures the patches are not overwritten.
 
+## Supported Cards
+
+- **UOB PPV (Preferred Platinum Visa)**: Tracks contactless and eligible online transaction buckets ($600 limit each)
+- **UOB VS (Visa Signature)**: Tracks contactless and foreign currency transaction buckets ($1200 limit each)
+
 ## Features
 
 - **Network Request Interception**: Monkey patches `fetch()` and `XMLHttpRequest` to intercept all network requests
 - **URL and Response Logging**: Logs request URLs and response data to browser console
 - **Patch Monitoring**: Continuously monitors to ensure monkey patches aren't overwritten by other scripts
 - **Auto-Recovery**: Automatically re-applies patches if they are detected as overwritten
+- **Multi-Card Support**: Automatically detects and displays appropriate SubCaps information for supported UOB cards
 
 ## Installation
 

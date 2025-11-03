@@ -2,6 +2,11 @@
 
 A Chrome extension using Manifest V3 that monitors network requests by monkey patching fetch() and XMLHttpRequest for UOB SubCaps calculation.
 
+## Supported Cards
+
+- **UOB PPV (Preferred Platinum Visa)**: Tracks contactless and eligible online transaction buckets ($600 limit each)
+- **UOB VS (Visa Signature)**: Tracks contactless and foreign currency transaction buckets ($1200 limit each)
+
 ## Features
 
 ✅ **Network Request Monitoring**: Monkey patches `fetch()` and `XMLHttpRequest` to intercept all network requests  
