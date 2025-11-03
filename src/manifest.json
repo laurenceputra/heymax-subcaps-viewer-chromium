@@ -12,7 +12,7 @@
   "content_scripts": [
     {
       "matches": ["https://heymax.ai/cards/your-cards/*"],
-      "js": ["content.js"],
+      "js": ["content.js", "ui.js"],
       "run_at": "document_start",
       "all_frames": true
     }
