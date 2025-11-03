@@ -10,14 +10,14 @@ function calculateBuckets(apiResponse, cardShortName = 'UOB PPV') {
     
     // Blacklist merchant name prefixes - transactions starting with these should not be counted
     const blacklistMerchantPrefixes = [
-        "AXS*", "AMAZE*", "AMAZE* TRANSIT*", "BANC DE BINARY*", "BANCDEBINARY.COM*",
-        "EZ LINK PTE LTD (FEVO)", "EZ Link transport", "EZ Link*", "EZ-LINK (IMAGINE CARD)",
-        "EZ-Link EZ-Reload (ATU)", "EZLINK*", "EzLink*", "EZ-LINK*", "FlashPay ATU*",
-        "MB * MONEYBOOKERS.COM", "NETS VCASHCARD*", "OANDA ASIA PAC*", "OANDAASIAPA",
+        "AXS", "AMAZE", "AMAZE* TRANSIT", "BANC DE BINARY", "BANCDEBINARY.COM",
+        "EZ LINK PTE LTD (FEVO)", "EZ Link transport", "EZ Link", "EZ-LINK (IMAGINE CARD)",
+        "EZ-Link EZ-Reload (ATU)", "EZLINK", "EzLink", "EZ-LINK", "FlashPay ATU",
+        "MB * MONEYBOOKERS.COM", "NETS VCASHCARD", "OANDA ASIA PAC", "OANDAASIAPA",
         "PAYPAL * BIZCONSULTA", "PAYPAL * CAPITALROYA", "PAYPAL * OANDAASIAPA",
-        "Saxo Cap Mkts Pte Ltd", "SKR*SKRILL.COM", "SKR*xglobalmarkets.com*", "SKYFX.COM*",
-        "TRANSIT*", "WWW.IGMARKETS.COM.SG", "IPAYMY*", "RWS-LEVY*", "SMOOVE PAY*",
-        "SINGPOST-SAM*", "RazerPay*", "NORWDS*"
+        "Saxo Cap Mkts Pte Ltd", "SKR*SKRILL.COM", "SKR*xglobalmarkets.com", "SKYFX.COM",
+        "TRANSIT", "WWW.IGMARKETS.COM.SG", "IPAYMY", "RWS-LEVY", "SMOOVE PAY",
+        "SINGPOST-SAM", "RazerPay", "NORWDS"
     ];
     
     // Helper function to round down to the nearest $5
@@ -34,9 +34,7 @@ function calculateBuckets(apiResponse, cardShortName = 'UOB PPV') {
         // Check merchant name blacklist
         if (transaction.merchant_name) {
             for (const prefix of blacklistMerchantPrefixes) {
-                // Remove trailing asterisk for prefix matching
-                const cleanPrefix = prefix.endsWith('*') ? prefix.slice(0, -1) : prefix;
-                if (transaction.merchant_name.startsWith(cleanPrefix)) {
+                if (transaction.merchant_name.startsWith(prefix)) {
                     return true;
                 }
             }
