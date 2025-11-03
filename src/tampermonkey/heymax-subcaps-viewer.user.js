@@ -641,7 +641,7 @@
                     $${results.contactless.toFixed(2)} / $${cardShortName === 'UOB VS' ? '1200' : '600'}
                 </p>
                 <p style="color: #666; font-size: 14px; margin-bottom: 0;">
-                    Total from contactless payments (rounded down to nearest $5)
+                    Total from contactless payments${cardShortName === 'UOB PPV' ? ' (rounded down to nearest $5)' : ''}
                 </p>
             </div>
         `;
@@ -655,7 +655,7 @@
                         $${results.foreignCurrency.toFixed(2)} / $1200
                     </p>
                     <p style="color: #666; font-size: 14px; margin-bottom: 0;">
-                        Total from non-SGD transactions (rounded down to nearest $5)
+                        Total from non-SGD transactions
                     </p>
                 </div>
             `;

@@ -99,8 +99,8 @@ The script calculates SubCaps based on:
   - Contactless bucket: Contactless transactions rounded down to nearest $5 (max $600)
   - Online bucket: Eligible online transactions (specific MCC codes) rounded down to nearest $5 (max $600)
 - **UOB VS**:
-  - Contactless bucket: Contactless SGD transactions (max $1200)
-  - Foreign Currency bucket: Non-SGD transactions (max $1200)
+  - Contactless bucket: Contactless transactions (excluding those counted in foreign currency bucket) (max $1200)
+  - Foreign Currency bucket: Non-SGD transactions (takes priority over contactless) (max $1200)
 
 Transactions are filtered to exclude:
 - Blacklisted MCC codes (bill payments, government services, etc.)
