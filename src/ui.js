@@ -2,6 +2,11 @@
 (function() {
   'use strict';
 
+  // Only run in the main frame, not in iframes
+  if (window !== window.top) {
+    return;
+  }
+
   console.log('[HeyMax SubCaps Viewer] UI script loaded');
 
   // Extract card ID from URL
@@ -16,25 +21,38 @@
       chrome.storage.local.get(['cardData'], function(result) {
         const cardData = result.cardData;
         
+        console.log('[HeyMax SubCaps Viewer] Checking visibility - cardData exists:', !!cardData);
+        console.log('[HeyMax SubCaps Viewer] Checking visibility - cardId:', cardId);
+        
         if (!cardData || !cardId) {
+          console.log('[HeyMax SubCaps Viewer] No cardData or cardId, hiding button');
           resolve(false);
           return;
         }
         
         const cardInfo = cardData[cardId];
+        console.log('[HeyMax SubCaps Viewer] Card info exists:', !!cardInfo);
+        
         if (!cardInfo || !cardInfo.card_tracker) {
+          console.log('[HeyMax SubCaps Viewer] No card info or card_tracker, hiding button');
           resolve(false);
           return;
         }
         
         const cardTrackerData = cardInfo.card_tracker.data;
+        console.log('[HeyMax SubCaps Viewer] Card tracker data exists:', !!cardTrackerData);
+        
         if (!cardTrackerData || !cardTrackerData.card) {
+          console.log('[HeyMax SubCaps Viewer] No card tracker data or card object, hiding button');
           resolve(false);
           return;
         }
         
         const shortName = cardTrackerData.card.short_name;
-        resolve(shortName === 'UOB PPV');
+        console.log('[HeyMax SubCaps Viewer] Card short_name:', shortName);
+        const isUobPpv = shortName === 'UOB PPV';
+        console.log('[HeyMax SubCaps Viewer] Is UOB PPV:', isUobPpv);
+        resolve(isUobPpv);
       });
     });
   }
@@ -270,25 +288,43 @@
 
   // Initialize UI
   function initializeUI() {
+    // Ensure document.body exists
+    if (!document.body) {
+      console.log('[HeyMax SubCaps Viewer] document.body not ready, waiting...');
+      setTimeout(initializeUI, 100);
+      return;
+    }
+    
+    console.log('[HeyMax SubCaps Viewer] Initializing UI components...');
+    
     // Create and append button
     const button = createButton();
     document.body.appendChild(button);
+    console.log('[HeyMax SubCaps Viewer] Button element created and appended');
     
     // Create and append overlay
     const overlay = createOverlay();
     document.body.appendChild(overlay);
+    console.log('[HeyMax SubCaps Viewer] Overlay element created and appended');
     
     // Check if button should be visible
     const cardId = extractCardIdFromUrl();
+    console.log('[HeyMax SubCaps Viewer] Extracted card ID:', cardId);
+    
     if (cardId) {
       shouldShowButton(cardId).then(shouldShow => {
+        console.log('[HeyMax SubCaps Viewer] Should show button:', shouldShow);
         if (shouldShow) {
           button.style.display = 'block';
           console.log('[HeyMax SubCaps Viewer] SubCaps button displayed for UOB PPV card');
         } else {
           console.log('[HeyMax SubCaps Viewer] SubCaps button hidden (conditions not met)');
         }
+      }).catch(error => {
+        console.error('[HeyMax SubCaps Viewer] Error checking button visibility:', error);
       });
+    } else {
+      console.log('[HeyMax SubCaps Viewer] No card ID found in URL, button will remain hidden');
     }
     
     // Listen for storage changes to update button visibility
@@ -336,8 +372,8 @@
       }, 250); // 250ms debounce delay
     });
     
-    // Only observe childList changes, not all subtree changes
-    observer.observe(document.body, { childList: true, subtree: false });
+    // Observe childList changes including subtree for SPA navigation detection
+    observer.observe(document.body, { childList: true, subtree: true });
   }
 
   // Wait for DOM to be ready
