@@ -283,7 +283,7 @@
       <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
         <h3 style="margin-top: 0; color: #2196F3; font-size: 18px;">Contactless Bucket</h3>
         <p style="font-size: 32px; font-weight: bold; margin: 10px 0; color: #333;">
-          $${results.contactless.toFixed(2)}
+          $${results.contactless.toFixed(2)}/$600
         </p>
         <p style="color: #666; font-size: 14px; margin-bottom: 0;">
           Total from contactless payments (rounded down to nearest $5)
@@ -293,7 +293,7 @@
       <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
         <h3 style="margin-top: 0; color: #4CAF50; font-size: 18px;">Online Bucket</h3>
         <p style="font-size: 32px; font-weight: bold; margin: 10px 0; color: #333;">
-          $${results.online.toFixed(2)}
+          $${results.online.toFixed(2)}/$600
         </p>
         <p style="color: #666; font-size: 14px; margin-bottom: 0;">
           Total from eligible online transactions (rounded down to nearest $5)
