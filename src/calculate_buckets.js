@@ -1,5 +1,5 @@
 // Main function to calculate buckets
-function calculateBuckets(apiResponse) {
+function calculateBuckets(apiResponse, cardShortName = 'UOB PPV') {
     // Define the ppv_online_mcc list directly in the function
     const ppvShoppingMcc = [4816, 5262, 5306, 5309, 5310, 5311, 5331, 5399, 5611, 5621, 5631, 5641, 5651, 5661, 5691, 5699, 5732, 5733, 5734, 5735, 5912, 5942, 5944, 5945, 5946, 5947, 5948, 5949, 5964, 5965, 5966, 5967, 5968, 5969, 5970, 5992, 5999];
     const ppvDiningMcc = [5811, 5812, 5814, 5333, 5411, 5441, 5462, 5499, 8012, 9751];
@@ -9,24 +9,45 @@ function calculateBuckets(apiResponse) {
 
     let contactlessBucket = 0;
     let onlineBucket = 0;
+    let foreignCurrencyBucket = 0;
 
-    apiResponse.forEach((transactionObj) => {
-        const transaction = transactionObj.transaction;
+    if (cardShortName === 'UOB VS') {
+        // UOB Visa Signature logic
+        apiResponse.forEach((transactionObj) => {
+            const transaction = transactionObj.transaction;
 
-        if (transaction.payment_tag === 'contactless') {
-            // Round down and add to contactless bucket
-            contactlessBucket += roundDownToNearestFive(transaction.base_currency_amount);
-        } else if (transaction.payment_tag === 'online') {
-            // Check if mcc_code is in ppv_online_mcc
-            const mccCode = parseInt(transaction.mcc_code, 10); // Ensure mcc_code is an integer
-            if (ppvShoppingMcc.includes(mccCode) || ppvDiningMcc.includes(mccCode) || ppvEntertainmentMcc.includes(mccCode)) {
-                // Round down and add to online bucket
-                onlineBucket += roundDownToNearestFive(transaction.base_currency_amount);
+            if (transaction.payment_tag === 'contactless') {
+                // Round down and add to contactless bucket
+                contactlessBucket += roundDownToNearestFive(transaction.base_currency_amount);
             }
-        }
-    });
+            
+            if (transaction.original_currency && transaction.original_currency !== 'SGD') {
+                // Round down and add to foreign currency bucket
+                foreignCurrencyBucket += roundDownToNearestFive(transaction.base_currency_amount);
+            }
+        });
 
-    return { contactless: contactlessBucket, online: onlineBucket};
+        return { contactless: contactlessBucket, foreignCurrency: foreignCurrencyBucket };
+    } else {
+        // UOB PPV logic (default)
+        apiResponse.forEach((transactionObj) => {
+            const transaction = transactionObj.transaction;
+
+            if (transaction.payment_tag === 'contactless') {
+                // Round down and add to contactless bucket
+                contactlessBucket += roundDownToNearestFive(transaction.base_currency_amount);
+            } else if (transaction.payment_tag === 'online') {
+                // Check if mcc_code is in ppv_online_mcc
+                const mccCode = parseInt(transaction.mcc_code, 10); // Ensure mcc_code is an integer
+                if (ppvShoppingMcc.includes(mccCode) || ppvDiningMcc.includes(mccCode) || ppvEntertainmentMcc.includes(mccCode)) {
+                    // Round down and add to online bucket
+                    onlineBucket += roundDownToNearestFive(transaction.base_currency_amount);
+                }
+            }
+        });
+
+        return { contactless: contactlessBucket, online: onlineBucket };
+    }
 }
 
 // Make function available globally for UI script
