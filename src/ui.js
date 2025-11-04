@@ -387,7 +387,7 @@
         </p>
         ${cardShortName === 'UOB VS' && results.contactless < 1000 ? `
         <p style="color: #F57C00; font-size: 14px; margin-top: 10px; margin-bottom: 0; font-weight: 500;">
-          To start earning bonus miles with this card, you must spend at least $1,000.
+          To start earning bonus miles, you must spend at least $1,000 in this category.
         </p>
         ` : ''}
       </div>
@@ -408,7 +408,7 @@
           </p>
           ${results.foreignCurrency < 1000 ? `
           <p style="color: #F57C00; font-size: 14px; margin-top: 10px; margin-bottom: 0; font-weight: 500;">
-            To start earning bonus miles with this card, you must spend at least $1,000.
+            To start earning bonus miles, you must spend at least $1,000 in this category.
           </p>
           ` : ''}
         </div>
