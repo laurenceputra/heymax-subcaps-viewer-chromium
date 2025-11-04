@@ -158,7 +158,7 @@
   function createButton() {
     const button = document.createElement('button');
     button.id = 'heymax-subcaps-button';
-    button.textContent = 'subcaps';
+    button.textContent = 'Subcaps';
     button.style.cssText = `
       position: fixed;
       bottom: 20px;
@@ -352,6 +352,23 @@
     const resultsDiv = document.getElementById('heymax-subcaps-results');
     if (!resultsDiv) return;
     
+    // Helper function to determine color based on value and card type
+    function getValueColor(value, bucketType, cardType) {
+      if (cardType === 'UOB VS') {
+        // For UOB VS: yellow < 1000, green 1000-1200, red > 1200
+        if (value < 1000) return '#FFC107'; // Yellow
+        if (value <= 1200) return '#4CAF50'; // Green
+        return '#f44336'; // Red
+      } else {
+        // For UOB PPV: green < 600, red >= 600
+        if (value < 600) return '#4CAF50'; // Green
+        return '#f44336'; // Red
+      }
+    }
+    
+    const contactlessColor = getValueColor(results.contactless, 'contactless', cardShortName);
+    const contactlessLimit = cardShortName === 'UOB VS' ? '1200' : '600';
+    
     let html = `
       <div style="margin-bottom: 20px;">
         <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
@@ -361,35 +378,40 @@
       
       <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
         <h3 style="margin-top: 0; color: #2196F3; font-size: 18px;">Contactless Bucket</h3>
-        <p style="font-size: 32px; font-weight: bold; margin: 10px 0; color: #333;">
-          $${results.contactless.toFixed(2)} / $${cardShortName === 'UOB VS' ? '1200' : '600'}
+        <p style="font-size: 32px; font-weight: bold; margin: 10px 0;">
+          <span style="color: ${contactlessColor};">$${results.contactless.toFixed(2)}</span>
+          <span style="color: #333;"> / $${contactlessLimit}</span>
         </p>
         <p style="color: #666; font-size: 14px; margin-bottom: 0;">
-          Total from contactless payments (rounded down to nearest $5)
+          Total from contactless payments${cardShortName === 'UOB PPV' ? ' (rounded down to nearest $5)' : ''}
         </p>
       </div>
     `;
     
     if (cardShortName === 'UOB VS') {
+      const foreignCurrencyColor = getValueColor(results.foreignCurrency, 'foreignCurrency', cardShortName);
       // Display Foreign Currency bucket for UOB VS
       html += `
         <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
           <h3 style="margin-top: 0; color: #4CAF50; font-size: 18px;">Foreign Currency Bucket</h3>
-          <p style="font-size: 32px; font-weight: bold; margin: 10px 0; color: #333;">
-            $${results.foreignCurrency.toFixed(2)} / $1200
+          <p style="font-size: 32px; font-weight: bold; margin: 10px 0;">
+            <span style="color: ${foreignCurrencyColor};">$${results.foreignCurrency.toFixed(2)}</span>
+            <span style="color: #333;"> / $1200</span>
           </p>
           <p style="color: #666; font-size: 14px; margin-bottom: 0;">
-            Total from non-SGD transactions (rounded down to nearest $5)
+            Total from non-SGD transactions
           </p>
         </div>
       `;
     } else {
+      const onlineColor = getValueColor(results.online, 'online', cardShortName);
       // Display Online bucket for UOB PPV
       html += `
         <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
           <h3 style="margin-top: 0; color: #4CAF50; font-size: 18px;">Online Bucket</h3>
-          <p style="font-size: 32px; font-weight: bold; margin: 10px 0; color: #333;">
-            $${results.online.toFixed(2)} / $600
+          <p style="font-size: 32px; font-weight: bold; margin: 10px 0;">
+            <span style="color: ${onlineColor};">$${results.online.toFixed(2)}</span>
+            <span style="color: #333;"> / $600</span>
           </p>
           <p style="color: #666; font-size: 14px; margin-bottom: 0;">
             Total from eligible online transactions (rounded down to nearest $5)
