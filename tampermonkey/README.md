@@ -27,6 +27,7 @@ This Tampermonkey userscript provides the same functionality as the Chrome exten
    - **Firefox**: [Tampermonkey](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) or [Greasemonkey](https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/)
    - **Safari**: [Tampermonkey](https://apps.apple.com/app/tampermonkey/id1482490089)
    - **Opera**: [Tampermonkey](https://addons.opera.com/extensions/details/tampermonkey-beta/)
+   - **Edge Mobile**: Install Tampermonkey from the list of extensions
 
 ### Installation Steps
 
