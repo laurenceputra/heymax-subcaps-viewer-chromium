@@ -554,7 +554,7 @@
 
         const title = document.createElement('h2');
         title.id = 'heymax-subcaps-title';
-        title.textContent = 'SubCaps Analysis';
+        title.textContent = 'Subcaps Analysis';
         title.style.cssText = `
             margin-top: 0;
             margin-bottom: 20px;
@@ -617,7 +617,7 @@
             : 'UOB PPV';
 
         if (titleElement) {
-            titleElement.textContent = `${cardShortName} SubCaps Analysis`;
+            titleElement.textContent = `${cardShortName} Subcaps Analysis`;
         }
 
         try {

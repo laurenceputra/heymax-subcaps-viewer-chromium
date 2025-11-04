@@ -257,7 +257,7 @@
     
     const title = document.createElement('h2');
     title.id = 'heymax-subcaps-title';
-    title.textContent = 'SubCaps Analysis';
+    title.textContent = 'Subcaps Analysis';
     title.style.cssText = `
       margin-top: 0;
       margin-bottom: 20px;
@@ -322,7 +322,7 @@
       
       // Update title based on card type
       if (titleElement) {
-        titleElement.textContent = `${cardShortName} SubCaps Analysis`;
+        titleElement.textContent = `${cardShortName} Subcaps Analysis`;
       }
       
       // Calculate buckets using the embedded calculateBuckets function
