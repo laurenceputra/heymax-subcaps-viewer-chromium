@@ -677,6 +677,11 @@
                 <p style="color: #666; font-size: 14px; margin-bottom: 0;">
                     Total from contactless payments${cardShortName === 'UOB PPV' ? ' (rounded down to nearest $5)' : ''}
                 </p>
+                ${cardShortName === 'UOB VS' && results.contactless < 1000 ? `
+                <p style="color: #F57C00; font-size: 14px; margin-top: 10px; margin-bottom: 0; font-weight: 500;">
+                    To start earning bonus miles with this card, you must spend at least $1,000.
+                </p>
+                ` : ''}
             </div>
         `;
 
@@ -692,6 +697,11 @@
                     <p style="color: #666; font-size: 14px; margin-bottom: 0;">
                         Total from non-SGD transactions
                     </p>
+                    ${results.foreignCurrency < 1000 ? `
+                    <p style="color: #F57C00; font-size: 14px; margin-top: 10px; margin-bottom: 0; font-weight: 500;">
+                        To start earning bonus miles with this card, you must spend at least $1,000.
+                    </p>
+                    ` : ''}
                 </div>
             `;
         } else {
