@@ -74,13 +74,13 @@ Now? Click a button. Done.
 
 This script currently supports:
 
-- **UOB Preferred Platinum Visa (PPV):**
-  - Tracks contactless payments (rounded down to nearest $5, max $600)
-  - Tracks eligible online transactions across shopping, dining, and entertainment MCCs (rounded down to nearest $5, max $600)
+- **UOB Preferred Platinum Visa (PPV)** — both buckets have a $600 limit and transactions are rounded down to the nearest $5:
+  - Tracks contactless payments
+  - Tracks eligible online transactions across shopping, dining, and entertainment MCCs
 
-- **UOB Visa Signature (VS):**
-  - Tracks contactless payments excluding foreign currency (max $1,200, must exceed $1,000 to earn bonus miles)
-  - Tracks foreign currency transactions in any currency other than SGD (max $1,200, must exceed $1,000 to earn bonus miles)
+- **UOB Visa Signature (VS)** — both buckets have a $1,200 limit and require spending at least $1,000 to earn bonus miles:
+  - Tracks contactless payments (excluding foreign currency)
+  - Tracks foreign currency transactions in any currency other than SGD
 
 ## Installation
 
