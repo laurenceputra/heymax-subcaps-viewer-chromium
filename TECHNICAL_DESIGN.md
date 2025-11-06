@@ -177,22 +177,22 @@ Card IDs are extracted from URLs using regex patterns.
 
 ### UOB VS (Visa Signature) Logic
 
-#### Foreign Currency Bucket ($1200 limit, priority)
+#### Foreign Currency Bucket ($1,200 limit, priority)
 - Filters transactions where `currency !== 'SGD'`
 - Excludes blacklisted transactions
 - Sums all foreign currency transactions (no rounding)
-- Counts up to $1200 maximum
+- Counts up to $1,200 maximum
 - **Note**: Foreign currency transactions are NOT counted in contactless bucket
 
-#### Contactless Bucket ($1200 limit)
+#### Contactless Bucket ($1,200 limit)
 - Filters transactions where `payment_mode === 'contactless'`
 - Excludes foreign currency transactions (already counted above)
 - Excludes blacklisted transactions
 - Sums all eligible contactless transactions (no rounding)
-- Counts up to $1200 maximum
+- Counts up to $1,200 maximum
 
 #### Bonus Miles Threshold
-- Requires at least $1000 spend in a bucket to earn bonus miles
+- Requires at least $1,000 spend in a bucket to earn bonus miles
 - Displayed with yellow warning if below threshold
 
 ### Transaction Blacklist
@@ -277,7 +277,7 @@ A modal overlay that displays calculated SubCap information:
 
 **Color Coding:**
 - **Green (< 90%)**: Safe zone
-- **Yellow (90-99% or below $1000 threshold for UOB VS)**: Warning
+- **Yellow (90-99% or below $1,000 threshold for UOB VS)**: Warning
 - **Red (≥ 100%)**: Limit reached or exceeded
 
 ## Chrome Extension Implementation Details

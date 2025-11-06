@@ -5,7 +5,7 @@ A Tampermonkey userscript that monitors network requests and calculates SubCaps 
 ## Supported Cards
 
 - **UOB PPV (Preferred Platinum Visa)**: Tracks contactless and eligible online transaction buckets ($600 limit each)
-- **UOB VS (Visa Signature)**: Tracks contactless and foreign currency transaction buckets ($1200 limit each)
+- **UOB VS (Visa Signature)**: Tracks contactless and foreign currency transaction buckets ($1,200 limit each)
 
 ## Features
 
@@ -119,8 +119,8 @@ The script calculates SubCaps based on card-specific rules:
 - **Online bucket**: Eligible online transactions (specific MCC codes) rounded down to nearest $5 (max $600)
 
 #### UOB VS (Visa Signature)
-- **Contactless bucket**: Contactless transactions (excluding those counted in foreign currency bucket) (max $1200)
-- **Foreign Currency bucket**: Non-SGD transactions (takes priority over contactless) (max $1200)
+- **Contactless bucket**: Contactless transactions (excluding those counted in foreign currency bucket) (max $1,200)
+- **Foreign Currency bucket**: Non-SGD transactions (takes priority over contactless) (max $1,200)
 - **Threshold**: Requires spending at least $1,000 in a bucket to earn bonus miles
 
 #### Transaction Filtering
