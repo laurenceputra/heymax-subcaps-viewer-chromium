@@ -1,6 +1,45 @@
-# HeyMax SubCaps Viewer - Tampermonkey Userscript
+# Track Your UOB Credit Card Subcaps — Simply & Privately
 
-A Tampermonkey userscript that monitors network requests and calculates SubCaps for UOB credit cards on HeyMax. This provides the same functionality as the Chrome extension but works cross-browser through Tampermonkey.
+If you're using UOB PPV (Preferred Platinum Visa) or UOB VS (Visa Signature) cards through HeyMax, you know how frustrating it can be to manually track your subcap spend across different categories. Are you hitting your contactless limit? Have you maxed out your online spend bucket? Nobody wants to dig through transaction lists and do mental math just to know where they stand.
+
+**This Tampermonkey userscript solves that problem.** It automatically tracks your spending across subcap categories and shows you exactly where you are—right when you need it.
+
+## What This Script Does for You
+
+### Visual Subcap Tracking at a Glance
+
+No more spreadsheets. No more guesswork. When you're viewing your UOB card details on HeyMax, this script adds a floating "Subcaps" button to your page. Click it, and you'll see:
+
+- **For UOB PPV cardholders:**
+  - Your contactless bucket spend (out of $600 limit)
+  - Your eligible online transaction spend (out of $600 limit)
+
+- **For UOB VS cardholders:**
+  - Your contactless bucket spend (out of $1,200 limit)
+  - Your foreign currency transaction spend (out of $1,200 limit)
+
+The overlay uses color coding to help you understand your status instantly:
+- **Green:** You're on track
+- **Yellow (UOB VS only):** You haven't hit the $1,000 threshold yet to start earning bonus miles
+- **Red:** You've reached or exceeded the limit for this bucket
+
+**UOB PPV card subcaps overlay:**
+
+![UOB PPV Subcaps Overlay](assets/uob_ppv.jpg)
+
+**UOB VS card subcaps overlay:**
+
+![UOB VS Subcaps Overlay](assets/uob_vs.jpg)
+
+### Completely Private & Secure
+
+Your transaction data is sensitive, and this script treats it that way:
+
+- **No external requests:** The script doesn't send any data outside your browser. Not to us, not to anyone.
+- **Read-only operation:** It only intercepts and reads the transaction data that HeyMax is already loading for you. It doesn't modify anything.
+- **Local storage only:** All calculations happen in your browser, and data is stored locally using Tampermonkey's secure storage.
+
+This isn't some third-party service collecting your spending habits. It's a simple tool that works entirely on your machine, giving you visibility without compromising your privacy.
 
 ## Supported Cards
 
@@ -27,6 +66,7 @@ Install a userscript manager browser extension:
 - **Firefox**: [Tampermonkey](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) or [Greasemonkey](https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/)
 - **Safari**: [Tampermonkey](https://apps.apple.com/app/tampermonkey/id1482490089)
 - **Opera**: [Tampermonkey](https://addons.opera.com/extensions/details/tampermonkey-beta/)
+- **Edge Mobile**: Install Tampermonkey from the list of extensions
 
 ### Installation Steps
 
