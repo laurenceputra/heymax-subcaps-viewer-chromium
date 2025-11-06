@@ -1,6 +1,11 @@
-# HeyMax SubCaps Viewer - Tampermonkey Script
+# HeyMax SubCaps Viewer - Tampermonkey Userscript
 
-This Tampermonkey userscript provides the same functionality as the Chrome extension, allowing you to monitor network requests and calculate SubCaps for UOB credit cards on HeyMax.
+A Tampermonkey userscript that monitors network requests and calculates SubCaps for UOB credit cards on HeyMax. This provides the same functionality as the Chrome extension but works cross-browser through Tampermonkey.
+
+## Supported Cards
+
+- **UOB PPV (Preferred Platinum Visa)**: Tracks contactless and eligible online transaction buckets ($600 limit each)
+- **UOB VS (Visa Signature)**: Tracks contactless and foreign currency transaction buckets ($1200 limit each)
 
 ## Features
 
@@ -13,21 +18,15 @@ This Tampermonkey userscript provides the same functionality as the Chrome exten
 ✅ **Multi-Card Support**: Automatically detects and displays appropriate SubCaps information for UOB PPV and UOB VS cards  
 ✅ **Local Storage**: Uses Tampermonkey's GM_getValue/GM_setValue for data persistence
 
-## Supported Cards
-
-- **UOB PPV (Preferred Platinum Visa)**: Tracks contactless and eligible online transaction buckets ($600 limit each)
-- **UOB VS (Visa Signature)**: Tracks contactless and foreign currency transaction buckets ($1200 limit each)
-
 ## Installation
 
 ### Prerequisites
 
-1. Install a userscript manager browser extension:
-   - **Chrome/Edge**: [Tampermonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojnmoofnopnkmjmkc)
-   - **Firefox**: [Tampermonkey](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) or [Greasemonkey](https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/)
-   - **Safari**: [Tampermonkey](https://apps.apple.com/app/tampermonkey/id1482490089)
-   - **Opera**: [Tampermonkey](https://addons.opera.com/extensions/details/tampermonkey-beta/)
-   - **Edge Mobile**: Install Tampermonkey from the list of extensions
+Install a userscript manager browser extension:
+- **Chrome/Edge**: [Tampermonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojnmoofnopnkmjmkc)
+- **Firefox**: [Tampermonkey](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) or [Greasemonkey](https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/)
+- **Safari**: [Tampermonkey](https://apps.apple.com/app/tampermonkey/id1482490089)
+- **Opera**: [Tampermonkey](https://addons.opera.com/extensions/details/tampermonkey-beta/)
 
 ### Installation Steps
 
@@ -61,6 +60,19 @@ Once installed, the script will automatically:
    - Contactless bucket amount and limit
    - Online bucket (UOB PPV) or Foreign Currency bucket (UOB VS) amount and limit
 
+The overlay uses color coding to help you understand your status instantly:
+- **Green:** You're on track
+- **Yellow (UOB VS only):** You haven't hit the $1,000 threshold yet to start earning bonus miles
+- **Red:** You've reached or exceeded the limit for this bucket
+
+**UOB PPV card subcaps overlay:**
+
+![UOB PPV Subcaps Overlay](assets/uob_ppv.jpg)
+
+**UOB VS card subcaps overlay:**
+
+![UOB VS Subcaps Overlay](assets/uob_vs.jpg)
+
 ### Viewing Console Logs
 
 Open the browser console (F12 or Ctrl+Shift+I) to see:
@@ -69,7 +81,7 @@ Open the browser console (F12 or Ctrl+Shift+I) to see:
 - Storage operations
 - Button visibility checks
 
-## How It Works
+## Technical Implementation
 
 ### Network Monitoring
 
@@ -93,15 +105,25 @@ cardData: {
 }
 ```
 
-### SubCaps Calculation
+Each card ID maintains the latest values for:
+- **transactions**: Latest transaction data for that card
+- **summary**: Latest summary data for that card
+- **card_tracker**: Card tracker data for that specific card (when viewed on detail pages like `/details` or `/reward-cycles`)
 
-The script calculates SubCaps based on:
-- **UOB PPV**:
-  - Contactless bucket: Contactless transactions rounded down to nearest $5 (max $600)
-  - Online bucket: Eligible online transactions (specific MCC codes) rounded down to nearest $5 (max $600)
-- **UOB VS**:
-  - Contactless bucket: Contactless transactions (excluding those counted in foreign currency bucket) (max $1200)
-  - Foreign Currency bucket: Non-SGD transactions (takes priority over contactless) (max $1200)
+### SubCaps Calculation Logic
+
+The script calculates SubCaps based on card-specific rules:
+
+#### UOB PPV (Preferred Platinum Visa)
+- **Contactless bucket**: Contactless transactions rounded down to nearest $5 (max $600)
+- **Online bucket**: Eligible online transactions (specific MCC codes) rounded down to nearest $5 (max $600)
+
+#### UOB VS (Visa Signature)
+- **Contactless bucket**: Contactless transactions (excluding those counted in foreign currency bucket) (max $1200)
+- **Foreign Currency bucket**: Non-SGD transactions (takes priority over contactless) (max $1200)
+- **Threshold**: Requires spending at least $1,000 in a bucket to earn bonus miles
+
+#### Transaction Filtering
 
 Transactions are filtered to exclude:
 - Blacklisted MCC codes (bill payments, government services, etc.)
@@ -123,27 +145,35 @@ Transactions are filtered to exclude:
 
 ## Troubleshooting
 
-**Script not working:**
+### Script Not Working
 - Ensure Tampermonkey is installed and enabled
 - Check that the script is enabled in Tampermonkey dashboard
 - Verify you're on a https://heymax.ai/cards/your-cards/* page
 - Check browser console for error messages
 
-**SubCaps button not appearing:**
+### SubCaps Button Not Appearing
 - Ensure you're on a card detail page (not the main cards list)
 - Wait for the page to load transaction data
 - Check browser console for visibility check logs
 - Verify the card is a supported type (UOB PPV or UOB VS)
 
-**Patches being overwritten:**
+### Patches Being Overwritten
 - The script automatically detects and re-applies patches every second
 - Check console for re-patching warnings
 - This is normal behavior if other scripts modify fetch/XHR
 
-**Data not persisting:**
+### Data Not Persisting
 - Tampermonkey storage is isolated per script
 - Clearing browser data may not affect Tampermonkey storage
 - To reset, open Tampermonkey dashboard → Storage → Delete values
+
+### Numbers Don't Match UOB's Records
+The script calculates subcaps based on the transaction data visible in HeyMax. There can be slight discrepancies due to:
+- Transactions that are pending or not yet synced
+- Edge cases in merchant categorization
+- Timing differences between HeyMax's data and UOB's systems
+
+Use this as a helpful guide, not as your official record.
 
 ## Security & Privacy
 
@@ -152,6 +182,15 @@ Transactions are filtered to exclude:
 - No data is transmitted to external servers
 - Network logs are only visible in your browser console
 - Uses Tampermonkey's secure storage API (GM_getValue/GM_setValue)
+- Read-only operation: only intercepts and reads data, doesn't modify anything
+
+## Mobile Browser Support
+
+The script works on mobile browsers that support Tampermonkey:
+- **Android**: Firefox Mobile, Kiwi Browser
+- **iOS**: Limited support (most iOS browsers don't support userscript managers)
+
+Most standard mobile browsers (Safari on iOS, Chrome on Android) don't support userscript managers by default.
 
 ## License
 
