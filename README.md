@@ -144,7 +144,7 @@ The code is open-source, so you can review it yourself. It doesn't send any data
 
 ## Documentation
 
-- **[TECHNICAL_DESIGN.md](TECHNICAL_DESIGN.md)** - Detailed technical implementation details for developers
+- **[TECHNICAL_DESIGN.md](TECHNICAL_DESIGN.md)** - Comprehensive technical documentation including architecture overview, network interception details, data storage structure, SubCap calculation logic, and troubleshooting guide for developers and contributors
 - **[EXTENSION_README.md](EXTENSION_README.md)** - Chrome extension specific documentation
 - **[tampermonkey/README.md](tampermonkey/README.md)** - Tampermonkey userscript documentation
 - **[src/test/TESTING.md](src/test/TESTING.md)** - Testing instructions for developers
