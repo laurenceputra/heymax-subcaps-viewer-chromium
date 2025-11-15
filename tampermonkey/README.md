@@ -61,23 +61,70 @@ This isn't some third-party service collecting your spending habits. It's a simp
 
 ### Prerequisites
 
+#### Browser Requirements
+
 Install a userscript manager browser extension:
-- **Chrome/Edge**: [Tampermonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojnmoofnopnkmjmkc)
+- **Chrome**: [Tampermonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojnmoofnopnkmjmkc)
+- **Edge Desktop**: [Tampermonkey](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd)
+- **Edge Mobile (Android)**: [Tampermonkey](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd)
 - **Firefox**: [Tampermonkey](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) or [Greasemonkey](https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/)
 - **Safari**: [Tampermonkey](https://apps.apple.com/app/tampermonkey/id1482490089)
 - **Opera**: [Tampermonkey](https://addons.opera.com/extensions/details/tampermonkey-beta/)
-- **Edge Mobile**: Install Tampermonkey from the list of extensions
+
+#### Important: Developer Mode Required
+
+For **Chrome** and **Edge (Desktop & Mobile)**, you must enable Developer Mode for Tampermonkey to intercept network requests:
+
+1. **Chrome:**
+   - Go to `chrome://extensions/`
+   - Toggle on "Developer mode" in the top-right corner
+   - Restart Chrome
+
+2. **Edge Desktop:**
+   - Go to `edge://extensions/`
+   - Toggle on "Developer mode" in the bottom-left corner
+   - Restart Edge
+
+3. **Edge Mobile (Android):**
+   - Open Edge, tap the three dots (⋯) menu
+   - Go to Extensions → Manage extensions
+   - Toggle on "Developer mode"
+   - Restart Edge
+
+**Why is this needed?** Developer mode allows Tampermonkey to access advanced APIs needed for monkey-patching `fetch()` and `XMLHttpRequest` to intercept network traffic. Without it, the script won't be able to capture your transaction data.
+
+#### Additional Configuration Guides
+
+For optimal performance, you may need to configure Tampermonkey to run properly:
+
+- **Chrome:** [Tampermonkey FAQ - Chrome Configuration](https://www.tampermonkey.net/faq.php#Q302)
+- **Edge:** [Tampermonkey FAQ - Edge Configuration](https://www.tampermonkey.net/faq.php#Q302)
+- **General Setup:** [Tampermonkey Documentation](https://www.tampermonkey.net/documentation.php)
+
+**Key settings to check in Tampermonkey:**
+- Config → "Allow access to file URLs": Not required for this script
+- Config → "Inject Mode": Should be set to "Auto" or "Instant"
+- Site-specific permissions: Ensure Tampermonkey has permission to run on `heymax.ai`
 
 ### Installation Steps
 
-1. Install Tampermonkey (or another userscript manager) in your browser
-2. Click on the Tampermonkey icon in your browser toolbar
-3. Select "Create a new script..."
-4. Delete the default template
-5. Copy the entire contents of `heymax-subcaps-viewer.user.js`
-6. Paste it into the Tampermonkey editor
-7. Click File → Save (or press Ctrl+S / Cmd+S)
-8. Navigate to https://heymax.ai/cards/your-cards/ and the script will activate automatically
+1. **Install Tampermonkey** from the links above for your browser
+2. **Enable Developer Mode** (Chrome/Edge users only - see instructions above)
+3. Click on the **Tampermonkey icon** in your browser toolbar
+4. Select **"Create a new script..."**
+5. Delete the default template
+6. Copy the entire contents of `heymax-subcaps-viewer.user.js`
+7. Paste it into the Tampermonkey editor
+8. Click **File → Save** (or press Ctrl+S / Cmd+S)
+9. Navigate to https://heymax.ai/cards/your-cards/ and the script will activate automatically
+
+### Verification
+
+To verify the script is working:
+1. Open browser console (F12 or Ctrl+Shift+I / Cmd+Option+I)
+2. Navigate to a card detail page on HeyMax
+3. Look for `[HeyMax SubCaps Viewer]` log messages
+4. The "Subcaps" button should appear in the bottom-right corner (for supported cards)
 
 ## Usage
 
@@ -187,9 +234,13 @@ Transactions are filtered to exclude:
 
 ### Script Not Working
 - Ensure Tampermonkey is installed and enabled
+- **Chrome/Edge users:** Verify Developer Mode is enabled (see Installation Prerequisites)
 - Check that the script is enabled in Tampermonkey dashboard
 - Verify you're on a https://heymax.ai/cards/your-cards/* page
+- Ensure Tampermonkey has permission to run on `heymax.ai`:
+  - Click Tampermonkey icon → Click on the script name → "Enabled" should be checked
 - Check browser console for error messages
+- Try disabling and re-enabling the script in Tampermonkey dashboard
 
 ### SubCaps Button Not Appearing
 - Ensure you're on a card detail page (not the main cards list)
@@ -227,10 +278,34 @@ Use this as a helpful guide, not as your official record.
 ## Mobile Browser Support
 
 The script works on mobile browsers that support Tampermonkey:
-- **Android**: Firefox Mobile, Kiwi Browser
-- **iOS**: Limited support (most iOS browsers don't support userscript managers)
 
-Most standard mobile browsers (Safari on iOS, Chrome on Android) don't support userscript managers by default.
+### Android
+- **Edge Mobile**: ✅ Fully supported (requires Developer Mode - see Installation Prerequisites)
+- **Firefox Mobile**: ✅ Fully supported
+- **Kiwi Browser**: ✅ Fully supported (Chromium-based browser with extension support)
+- **Chrome Mobile**: ❌ Not supported (doesn't support extensions)
+
+### iOS
+- **Safari**: ⚠️ Limited support (iOS 15+ only, via Tampermonkey app)
+- **Other browsers**: ❌ Most iOS browsers don't support userscript managers
+
+### Edge Mobile Setup (Android)
+
+Edge Mobile on Android is the recommended mobile browser for this script:
+
+1. Install [Microsoft Edge](https://play.google.com/store/apps/details?id=com.microsoft.emmx) from Google Play Store
+2. Open Edge and tap the three dots (⋯) menu
+3. Go to **Extensions**
+4. Tap **"Discover more extensions"** or search for Tampermonkey
+5. Install [Tampermonkey](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd)
+6. **Enable Developer Mode:**
+   - Tap three dots (⋯) → Extensions → Manage extensions
+   - Toggle on "Developer mode" at the bottom
+   - Restart Edge
+7. Follow the main Installation Steps above to install the userscript
+8. Navigate to HeyMax and use as normal
+
+**Note:** Mobile screens are smaller, so the overlay may need scrolling to view all information.
 
 ## License
 

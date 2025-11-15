@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         HeyMax SubCaps Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.0.2
+// @version      2.0.0
 // @description  Monitor network requests and display SubCaps calculations for UOB cards on HeyMax
 // @author       Laurence Putra Franslay (@laurenceputra)
 // @source       https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/
 // @update       https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/raw/refs/heads/main/tampermonkey/heymax-subcaps-viewer.user.js
-// @match        https://heymax.ai/cards/your-cards/*
+// @match        https://heymax.ai/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=heymax.ai
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -21,26 +21,19 @@
     console.log('[HeyMax SubCaps Viewer] Tampermonkey script starting...');
 
     // ============================================================================
-    // PART 1: INJECT MONITORING SCRIPT INTO PAGE CONTEXT
+    // API Interception via Direct Monkey Patching
     // ============================================================================
-    // The monitoring script must run in the page context to intercept fetch/XHR
-    // It will dispatch custom events that we listen to in the userscript context
     
-    function injectMonitoringScript() {
-        const script = document.createElement('script');
-        script.textContent = `
-(function() {
-    'use strict';
-
     // Store original functions
     const originalFetch = window.fetch;
     const originalXHROpen = XMLHttpRequest.prototype.open;
     const originalXHRSend = XMLHttpRequest.prototype.send;
 
-    // Flag to track if we're currently patching
-    let isPatching = false;
-
-    // Check if URL should be logged
+    // Helper functions for API interception
+    
+    /**
+     * Check if URL should be logged
+     */
     function shouldLogUrl(url) {
         try {
             const urlObj = new URL(url, window.location.href);
@@ -70,170 +63,9 @@
         }
     }
 
-    // Logger function - dispatches event for userscript to handle
-    function logApiResponse(method, url, response, responseData) {
-        console.log('%c[Network Monitor] API Response Logged', 'color: #4CAF50; font-weight: bold;');
-        console.log('Method:', method);
-        console.log('URL:', url);
-        console.log('Status:', response?.status);
-        console.log('Response Data:', responseData);
-        console.log('---');
-
-        // Dispatch custom event for userscript to listen to
-        window.dispatchEvent(new CustomEvent('apiResponseLogged', {
-            detail: {
-                method,
-                url,
-                status: response?.status,
-                data: responseData,
-                timestamp: new Date().toISOString()
-            }
-        }));
-    }
-
-    // Monkey patch fetch
-    function patchFetch() {
-        if (window.fetch === monkeyPatchedFetch) return;
-        
-        window.fetch = monkeyPatchedFetch;
-        console.log('%c[Network Monitor] fetch() has been patched', 'color: #2196F3; font-weight: bold;');
-    }
-
-    function monkeyPatchedFetch(...args) {
-        const [resource, config] = args;
-        const url = typeof resource === 'string' ? resource : resource.url;
-        const method = config?.method || 'GET';
-
-        console.log(\`%c[Network Monitor] Intercepted fetch: \${method} \${url}\`, 'color: #FF9800;');
-
-        return originalFetch.apply(this, args)
-            .then(async response => {
-                if (!shouldLogUrl(url)) {
-                    return response;
-                }
-
-                const clonedResponse = response.clone();
-                
-                try {
-                    const contentType = response.headers.get('content-type');
-                    let responseData;
-                    
-                    if (contentType && contentType.includes('application/json')) {
-                        responseData = await clonedResponse.json();
-                        logApiResponse(method, url, response, responseData);
-                    } else {
-                        const text = await clonedResponse.text();
-                        if (text.length < 1000) {
-                            logApiResponse(method, url, response, text);
-                        }
-                    }
-                } catch (error) {
-                    console.warn('[Network Monitor] Error reading response:', error);
-                }
-
-                return response;
-            })
-            .catch(error => {
-                console.error(\`[Network Monitor] Fetch error for \${url}:\`, error);
-                throw error;
-            });
-    }
-
-    // Monkey patch XMLHttpRequest
-    function patchXHR() {
-        if (XMLHttpRequest.prototype.open === monkeyPatchedXHROpen) return;
-        
-        XMLHttpRequest.prototype.open = monkeyPatchedXHROpen;
-        XMLHttpRequest.prototype.send = monkeyPatchedXHRSend;
-        console.log('%c[Network Monitor] XMLHttpRequest has been patched', 'color: #2196F3; font-weight: bold;');
-    }
-
-    function monkeyPatchedXHROpen(method, url, ...rest) {
-        this._method = method;
-        this._url = url;
-        console.log(\`%c[Network Monitor] Intercepted XHR: \${method} \${url}\`, 'color: #FF9800;');
-        return originalXHROpen.call(this, method, url, ...rest);
-    }
-
-    function monkeyPatchedXHRSend(body) {
-        const xhr = this;
-        
-        xhr.addEventListener('load', function() {
-            if (xhr.readyState === 4 && xhr.status >= 200 && xhr.status < 300) {
-                if (!shouldLogUrl(xhr._url)) {
-                    return;
-                }
-
-                try {
-                    const contentType = xhr.getResponseHeader('content-type');
-                    let responseData;
-
-                    if (contentType && contentType.includes('application/json')) {
-                        responseData = JSON.parse(xhr.responseText);
-                    } else if (xhr.responseText && xhr.responseText.length < 1000) {
-                        responseData = xhr.responseText;
-                    }
-
-                    if (responseData) {
-                        logApiResponse(xhr._method, xhr._url, { status: xhr.status }, responseData);
-                    }
-                } catch (error) {
-                    console.warn('[Network Monitor] Error processing XHR response:', error);
-                }
-            }
-        });
-
-        return originalXHRSend.call(this, body);
-    }
-
-    // Apply patches
-    function applyPatches() {
-        if (isPatching) return;
-        isPatching = true;
-        
-        patchFetch();
-        patchXHR();
-        
-        isPatching = false;
-    }
-
-    // Monitor for patches being overwritten
-    function monitorPatches() {
-        setInterval(() => {
-            if (window.fetch !== monkeyPatchedFetch) {
-                console.warn('%c[Network Monitor] ALERT: fetch() was overwritten! Re-applying patch...', 'color: #F44336; font-weight: bold; font-size: 14px;');
-                patchFetch();
-            }
-
-            if (XMLHttpRequest.prototype.open !== monkeyPatchedXHROpen) {
-                console.warn('%c[Network Monitor] ALERT: XMLHttpRequest.open() was overwritten! Re-applying patch...', 'color: #F44336; font-weight: bold; font-size: 14px;');
-                patchXHR();
-            }
-        }, 1000);
-    }
-
-    // Initialize
-    console.log('%c[Network Monitor] Initializing network request monitoring...', 'color: #9C27B0; font-weight: bold; font-size: 16px;');
-    applyPatches();
-    monitorPatches();
-    console.log('%c[Network Monitor] Monitoring active!', 'color: #4CAF50; font-weight: bold; font-size: 16px;');
-
-})();
-`;
-        
-        (document.head || document.documentElement).appendChild(script);
-        console.log('[HeyMax SubCaps Viewer] Monitoring script injected into page context');
-    }
-
-    // Inject the monitoring script immediately
-    injectMonitoringScript();
-
-    // ============================================================================
-    // PART 2: LISTEN FOR EVENTS AND STORE DATA USING GM FUNCTIONS
-    // ============================================================================
-    // This part runs in the userscript context where GM functions are available
-
-    // Extract card ID from URL
+    /**
+     * Extract card ID from URL
+     */
     function extractCardId(url) {
         const match = url.match(/\/api\/spend_tracking\/cards\/([a-f0-9]+)\//);
         if (match) {
@@ -248,7 +80,9 @@
         return null;
     }
 
-    // Determine the data type from URL
+    /**
+     * Determine the data type from URL
+     */
     function getDataType(url) {
         if (url.includes('/transactions')) {
             return 'transactions';
@@ -260,12 +94,11 @@
         return null;
     }
 
-    // Listen for API response events from the injected script
-    window.addEventListener('apiResponseLogged', function(event) {
-        const { method, url, status, data, timestamp } = event.detail;
-        
-        console.log('[HeyMax SubCaps Viewer] API Response received in userscript:');
-        console.log('  Timestamp:', timestamp);
+    /**
+     * Store API response data using GM storage
+     */
+    function storeApiData(method, url, status, data) {
+        console.log('[HeyMax SubCaps Viewer] API Response intercepted:');
         console.log('  Method:', method);
         console.log('  URL:', url);
         console.log('  Status:', status);
@@ -285,8 +118,6 @@
         const cardDataStr = GM_getValue('cardData', '{}');
         const cardData = JSON.parse(cardDataStr);
         
-        console.log('[HeyMax SubCaps Viewer] Current cardData before update:', cardData);
-        
         if (dataType && cardId) {
             // Initialize card object if it doesn't exist
             if (!cardData[cardId]) {
@@ -296,7 +127,7 @@
             // Store the latest data for this card ID and data type
             cardData[cardId][dataType] = {
                 data: data,
-                timestamp: timestamp,
+                timestamp: new Date().toISOString(),
                 url: url,
                 status: status
             };
@@ -306,7 +137,7 @@
             // card_tracker on main listing page (no specific card ID)
             cardData['card_tracker'] = {
                 data: data,
-                timestamp: timestamp,
+                timestamp: new Date().toISOString(),
                 url: url,
                 status: status
             };
@@ -316,18 +147,95 @@
         
         // Save the updated cardData structure
         GM_setValue('cardData', JSON.stringify(cardData));
+    }
+
+    // Fetch interception
+    window.fetch = async function(...args) {
+        const response = await originalFetch.apply(this, args);
+        const url = typeof args[0] === 'string' ? args[0] : args[0].url;
         
-        console.log('[HeyMax SubCaps Viewer] Card data updated. New cardData:', cardData);
+        if (typeof url === 'string' && shouldLogUrl(url)) {
+            const clonedResponse = response.clone();
+            try {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const data = await clonedResponse.json();
+                    const method = args[1]?.method || 'GET';
+                    storeApiData(method, url, response.status, data);
+                }
+            } catch (e) {
+                console.error('[HeyMax SubCaps Viewer] Error processing fetch response:', e);
+            }
+        }
         
-        // Verify it was saved
-        const verifyStr = GM_getValue('cardData', '{}');
-        console.log('[HeyMax SubCaps Viewer] Verified saved cardData:', JSON.parse(verifyStr));
-    });
+        return response;
+    };
+
+    // XMLHttpRequest interception
+    XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+        this._method = method;
+        this._url = url;
+        return originalXHROpen.apply(this, [method, url, ...rest]);
+    };
+
+    XMLHttpRequest.prototype.send = function(...args) {
+        const url = this._url;
+        
+        if (url && typeof url === 'string' && shouldLogUrl(url)) {
+            this.addEventListener('load', function() {
+                if (this.readyState === 4 && this.status >= 200 && this.status < 300) {
+                    try {
+                        const contentType = this.getResponseHeader('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            const data = JSON.parse(this.responseText);
+                            storeApiData(this._method, url, this.status, data);
+                        }
+                    } catch (error) {
+                        console.error('[HeyMax SubCaps Viewer] Error processing XHR response:', error);
+                    }
+                }
+            });
+        }
+        
+        return originalXHRSend.apply(this, args);
+    };
+
+    console.log('[HeyMax SubCaps Viewer] API interception initialized');
+
+    // Monitor for patches being overwritten and re-apply if necessary
+    setInterval(() => {
+        if (window.fetch !== window.fetch || window.fetch.toString().includes('native code')) {
+            // Re-check if our patch is still in place
+            const fetchStr = window.fetch.toString();
+            if (!fetchStr.includes('originalFetch') && !fetchStr.includes('[HeyMax SubCaps Viewer]')) {
+                console.warn('[HeyMax SubCaps Viewer] fetch() was overwritten! Re-applying patch...');
+                window.fetch = async function(...args) {
+                    const response = await originalFetch.apply(this, args);
+                    const url = typeof args[0] === 'string' ? args[0] : args[0].url;
+                    
+                    if (typeof url === 'string' && shouldLogUrl(url)) {
+                        const clonedResponse = response.clone();
+                        try {
+                            const contentType = response.headers.get('content-type');
+                            if (contentType && contentType.includes('application/json')) {
+                                const data = await clonedResponse.json();
+                                const method = args[1]?.method || 'GET';
+                                storeApiData(method, url, response.status, data);
+                            }
+                        } catch (e) {
+                            console.error('[HeyMax SubCaps Viewer] Error processing fetch response:', e);
+                        }
+                    }
+                    
+                    return response;
+                };
+            }
+        }
+    }, 5000);
 
     // ============================================================================
-    // PART 3: UI COMPONENTS
+    // UI COMPONENTS
     // ============================================================================
-    // This runs in the userscript context and can access GM storage
 
     // Extract card ID from URL
     function extractCardIdFromUrl() {
