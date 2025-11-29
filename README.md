@@ -11,11 +11,13 @@ If you're using UOB PPV (Preferred Platinum Visa) or UOB VS (Visa Signature) car
 ✅ **Multi-Card Support**: Works with both UOB PPV and UOB VS cards  
 ✅ **Privacy-First**: All data stays in your browser—nothing sent to external servers  
 ✅ **Auto-Recovery**: Automatically re-applies patches if they are detected as overwritten  
-✅ **Local Storage**: Persists data using Tampermonkey's secure GM_getValue/GM_setValue API
+✅ **Remembers Your Data**: Your subcap information is saved between visits so you don't have to wait for it to reload each time
 
 ## 📱 Use Edge Mobile as a HeyMax App Replacement
 
 **Don't have or want the HeyMax app?** You can use Microsoft Edge on your mobile device with this Tampermonkey script as a full replacement for the HeyMax app — with the added benefit of subcap tracking that the official app doesn't provide!
+
+The HeyMax app is essentially a wrapper around their mobile website, so you get the exact same experience in Edge Mobile. But unlike the app, using the mobile site through Edge allows you to install browser extensions like this script, giving you customizations and features that aren't possible with the official app.
 
 ### Why Edge Mobile?
 - **Tampermonkey Support**: Unlike most mobile browsers, Edge Mobile supports browser extensions including Tampermonkey
@@ -76,9 +78,9 @@ The overlay uses color coding to help you understand your status instantly:
 1. Install **Microsoft Edge** browser on your mobile device ([iOS](https://apps.apple.com/app/microsoft-edge/id1288723196) / [Android](https://play.google.com/store/apps/details?id=com.microsoft.emmx))
 2. Open Edge, tap **≡** (menu) → **Extensions** → **Get extensions from store**
 3. Search for **Tampermonkey** and install it
-4. Open Tampermonkey and tap **Create a new script**
-5. Delete the default template and paste the entire contents of [`src/heymax-subcaps-viewer.user.js`](src/heymax-subcaps-viewer.user.js)
-6. Save the script
+4. Open the [raw script file](https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/raw/refs/heads/main/src/heymax-subcaps-viewer.user.js) in your browser
+5. Tampermonkey will automatically detect the userscript and prompt you to install it
+6. Click **Install** to add the script
 7. Navigate to https://heymax.ai/cards/your-cards/ and view your card details
 8. Click the green "Subcaps" button that appears in the bottom-right corner
 
@@ -91,12 +93,11 @@ The overlay uses color coding to help you understand your status instantly:
    - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) or [Greasemonkey](https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/)
    - [Safari](https://apps.apple.com/app/tampermonkey/id1482490089)
    - [Opera](https://addons.opera.com/extensions/details/tampermonkey-beta/)
-2. Click on the Tampermonkey icon and select "Create a new script..."
-3. Delete the default template
-4. Copy the entire contents of [`src/heymax-subcaps-viewer.user.js`](src/heymax-subcaps-viewer.user.js)
-5. Paste it into the Tampermonkey editor and save (Ctrl+S / Cmd+S)
-6. Navigate to https://heymax.ai/cards/your-cards/ and view your card details
-7. Click the green "Subcaps" button that appears in the bottom-right corner
+2. Open the [raw script file](https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/raw/refs/heads/main/src/heymax-subcaps-viewer.user.js) in your browser
+3. Tampermonkey will automatically detect the userscript and prompt you to install it
+4. Click **Install** to add the script
+5. Navigate to https://heymax.ai/cards/your-cards/ and view your card details
+6. Click the green "Subcaps" button that appears in the bottom-right corner
 
 ## Usage
 
