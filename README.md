@@ -15,7 +15,7 @@ If you're using UOB PPV (Preferred Platinum Visa) or UOB VS (Visa Signature) car
 
 ## 📱 Use Edge Mobile Instead of the HeyMax App
 
-**Don't have or want the HeyMax app?** The HeyMax mobile site offers similar features to the app, and using Edge Mobile lets you install browser extensions like this script—giving you subcap tracking that the official app doesn't provide!
+**Want better subcap tracking on mobile?** The HeyMax mobile site offers similar features to the app, and using Edge Mobile lets you install browser extensions like this script—giving mile chasers the subcap tracking they need that the official app doesn't provide!
 
 ### Why Edge Mobile?
 - **Tampermonkey Support**: Unlike most mobile browsers, Edge Mobile supports browser extensions including Tampermonkey
