@@ -234,11 +234,11 @@ Use this as a helpful guide, not as your official record.
 
 ## Mobile Browser Support
 
-**Edge Mobile is recommended** for the best experience on mobile devices:
+**Edge Mobile is the only supported mobile browser** for this script:
 
 - **Edge Mobile (iOS/Android)**: Full Tampermonkey support - recommended as a HeyMax app replacement
-- **Android alternatives**: Firefox Mobile, Kiwi Browser also support Tampermonkey
-- **iOS**: Edge Mobile is your best option; most other iOS browsers don't support userscript managers
+
+**Note**: While Firefox Mobile and Kiwi Browser support Tampermonkey, the HeyMax.ai website doesn't work on them—it redirects users to download the app instead of loading the web interface.
 
 ## License
 

@@ -6,7 +6,7 @@ This document provides detailed technical information about the HeyMax SubCaps V
 
 The HeyMax SubCaps Viewer uses network request interception to capture transaction data from the HeyMax API, store it locally, and calculate SubCap spending for UOB credit cards.
 
-The Tampermonkey userscript is cross-browser compatible and works on desktop browsers (Chrome, Firefox, Safari, Opera, Edge) as well as mobile browsers that support Tampermonkey (Edge Mobile recommended, also Firefox Mobile and Kiwi Browser on Android).
+The Tampermonkey userscript is cross-browser compatible and works on desktop browsers (Chrome, Firefox, Safari, Opera, Edge) as well as Edge Mobile. Note: While Firefox Mobile and Kiwi Browser support Tampermonkey, the HeyMax.ai website doesn't work on them (redirects to app download).
 
 ## Network Request Interception
 
@@ -357,8 +357,8 @@ The Tampermonkey implementation runs with elevated privileges via GM_* APIs, all
 ### Mobile Browsers
 
 - **Edge Mobile (Recommended)**: Full Tampermonkey support on iOS and Android
-- **Firefox Mobile**: Tampermonkey support on Android
-- **Kiwi Browser**: Tampermonkey support on Android
+
+**Note**: While Firefox Mobile and Kiwi Browser support Tampermonkey, the HeyMax.ai website doesn't work on them—it redirects users to download the app instead of loading the web interface.
 
 ## Troubleshooting Guide
 

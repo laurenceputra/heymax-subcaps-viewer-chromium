@@ -125,9 +125,7 @@ Not yet. The script is specifically designed for UOB PPV and UOB VS cards becaus
 
 ### Does this work on other mobile browsers?
 
-Edge Mobile is recommended because it has the best Tampermonkey support on mobile. Other options:
-- **Android**: Firefox Mobile and Kiwi Browser also support Tampermonkey
-- **iOS**: Edge Mobile is your best option; most other iOS browsers don't support userscript managers
+Edge Mobile is the only recommended mobile browser. While other browsers like Firefox Mobile and Kiwi Browser support Tampermonkey, the HeyMax.ai website doesn't work on them—it redirects users to download the app instead of loading the web interface.
 
 ### What if my subcap numbers don't match what UOB shows?
 
