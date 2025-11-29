@@ -4,6 +4,33 @@ If you're using UOB PPV (Preferred Platinum Visa) or UOB VS (Visa Signature) car
 
 **This Tampermonkey userscript solves that problem.** It automatically tracks your spending across subcap categories and shows you exactly where you are—right when you need it.
 
+## 📱 Use Edge Mobile as a HeyMax App Replacement
+
+**Don't have or want the HeyMax app?** You can use Microsoft Edge on your mobile device with this Tampermonkey script as a full replacement for the HeyMax app — with the added benefit of subcap tracking that the official app doesn't provide!
+
+### Why Edge Mobile?
+- **Tampermonkey Support**: Unlike most mobile browsers, Edge Mobile supports browser extensions including Tampermonkey
+- **Same Features**: Access all HeyMax.ai website features directly in your browser
+- **Plus Subcap Tracking**: This script adds subcap tracking functionality that even the official app lacks
+- **Privacy**: All calculations happen locally on your device
+
+### Add HeyMax to Your Homescreen
+For quick access like a native app, add HeyMax to your homescreen:
+
+**On iOS (Edge Mobile):**
+1. Open https://heymax.ai in Edge
+2. Tap the **Share** button (square with arrow)
+3. Scroll down and tap **Add to Home Screen**
+4. Name it "HeyMax" and tap **Add**
+
+**On Android (Edge Mobile):**
+1. Open https://heymax.ai in Edge
+2. Tap the **menu** (three dots)
+3. Tap **Add to phone** or **Add to Home screen**
+4. Confirm by tapping **Add**
+
+Now you can launch HeyMax directly from your homescreen—just like an app!
+
 ## What This Script Does for You
 
 ### Visual Subcap Tracking at a Glance
@@ -25,11 +52,11 @@ The overlay uses color coding to help you understand your status instantly:
 
 **UOB PPV card subcaps overlay:**
 
-![UOB PPV Subcaps Overlay](assets/uob_ppv.jpg)
+![UOB PPV Subcaps Overlay](../assets/uob_ppv.jpg)
 
 **UOB VS card subcaps overlay:**
 
-![UOB VS Subcaps Overlay](assets/uob_vs.jpg)
+![UOB VS Subcaps Overlay](../assets/uob_vs.jpg)
 
 ### Completely Private & Secure
 
@@ -59,16 +86,28 @@ This isn't some third-party service collecting your spending habits. It's a simp
 
 ## Installation
 
-### Prerequisites
+### Edge Mobile (Recommended for Mobile Users)
+
+**Best option for using HeyMax on your phone without the app:**
+
+1. Install **Microsoft Edge** browser on your mobile device ([iOS](https://apps.apple.com/app/microsoft-edge/id1288723196) / [Android](https://play.google.com/store/apps/details?id=com.microsoft.emmx))
+2. Open Edge, tap **≡** (menu) → **Extensions** → **Get extensions from store**
+3. Search for **Tampermonkey** and install it
+4. Open Tampermonkey and tap **Create a new script**
+5. Delete the default template and paste the entire contents of `heymax-subcaps-viewer.user.js`
+6. Save the script
+7. Navigate to https://heymax.ai/cards/your-cards/ and view your card details
+8. Click the green "Subcaps" button that appears in the bottom-right corner
+
+### Desktop Browsers
 
 Install a userscript manager browser extension:
 - **Chrome/Edge**: [Tampermonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojnmoofnopnkmjmkc)
 - **Firefox**: [Tampermonkey](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) or [Greasemonkey](https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/)
 - **Safari**: [Tampermonkey](https://apps.apple.com/app/tampermonkey/id1482490089)
 - **Opera**: [Tampermonkey](https://addons.opera.com/extensions/details/tampermonkey-beta/)
-- **Edge Mobile**: Install Tampermonkey from the list of extensions
 
-### Installation Steps
+### Desktop Installation Steps
 
 1. Install Tampermonkey (or another userscript manager) in your browser
 2. Click on the Tampermonkey icon in your browser toolbar
@@ -107,11 +146,11 @@ The overlay uses color coding to help you understand your status instantly:
 
 **UOB PPV card subcaps overlay:**
 
-![UOB PPV Subcaps Overlay](assets/uob_ppv.jpg)
+![UOB PPV Subcaps Overlay](../assets/uob_ppv.jpg)
 
 **UOB VS card subcaps overlay:**
 
-![UOB VS Subcaps Overlay](assets/uob_vs.jpg)
+![UOB VS Subcaps Overlay](../assets/uob_vs.jpg)
 
 ### Viewing Console Logs
 
@@ -169,20 +208,6 @@ Transactions are filtered to exclude:
 - Blacklisted MCC codes (bill payments, government services, etc.)
 - Blacklisted merchant name prefixes (transit, forex, etc.)
 
-## Comparison with Chrome Extension
-
-| Feature | Chrome Extension | Tampermonkey Script |
-|---------|------------------|---------------------|
-| Network monitoring | ✅ | ✅ |
-| API response logging | ✅ | ✅ |
-| Patch protection | ✅ | ✅ |
-| SubCaps button | ✅ | ✅ |
-| SubCaps calculation | ✅ | ✅ |
-| Data persistence | Chrome Storage API | Tampermonkey GM storage |
-| Installation | Load unpacked extension | Install userscript |
-| Cross-browser | Chrome/Edge only | Chrome, Firefox, Safari, Opera |
-| Update mechanism | Manual reload | Tampermonkey auto-update |
-
 ## Troubleshooting
 
 ### Script Not Working
@@ -226,11 +251,11 @@ Use this as a helpful guide, not as your official record.
 
 ## Mobile Browser Support
 
-The script works on mobile browsers that support Tampermonkey:
-- **Android**: Firefox Mobile, Kiwi Browser
-- **iOS**: Limited support (most iOS browsers don't support userscript managers)
+**Edge Mobile is the only supported mobile browser** for this script:
 
-Most standard mobile browsers (Safari on iOS, Chrome on Android) don't support userscript managers by default.
+- **Edge Mobile (iOS/Android)**: Full Tampermonkey support - recommended as a HeyMax app replacement
+
+**Note**: While Firefox Mobile and Kiwi Browser support Tampermonkey, the HeyMax.ai website doesn't work on them—it redirects users to download the app instead of loading the web interface.
 
 ## License
 

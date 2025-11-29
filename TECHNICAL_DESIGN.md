@@ -1,21 +1,18 @@
 # Technical Design Documentation
 
-This document provides detailed technical information about the HeyMax SubCaps Viewer implementation, covering both the Chrome Extension and Tampermonkey userscript versions.
+This document provides detailed technical information about the HeyMax SubCaps Viewer Tampermonkey userscript implementation.
 
 ## Architecture Overview
 
-The HeyMax SubCaps Viewer uses network request interception to capture transaction data from the HeyMax API, store it locally, and calculate SubCap spending for UOB credit cards. Two implementation variants exist:
+The HeyMax SubCaps Viewer uses network request interception to capture transaction data from the HeyMax API, store it locally, and calculate SubCap spending for UOB credit cards.
 
-1. **Chrome Extension** (Manifest V3) - Chrome/Edge browsers
-2. **Tampermonkey Userscript** - Cross-browser compatible
-
-Both implementations share the same core functionality but differ in deployment mechanism and storage APIs.
+The Tampermonkey userscript is cross-browser compatible and works on desktop browsers (Chrome, Firefox, Safari, Opera, Edge) as well as Edge Mobile. Note: While Firefox Mobile and Kiwi Browser support Tampermonkey, the HeyMax.ai website doesn't work on them (redirects to app download).
 
 ## Network Request Interception
 
 ### Monkey Patching Approach
 
-Both implementations use monkey patching to intercept network requests:
+The implementation uses monkey patching to intercept network requests:
 
 1. **Store Original References**: Save references to native `fetch()` and `XMLHttpRequest` objects
 2. **Replace with Patched Versions**: Override with custom implementations that:
@@ -81,20 +78,6 @@ setInterval(() => {
 ```
 
 ## Data Storage Architecture
-
-### Chrome Extension Storage
-
-Uses Chrome's Storage API (`chrome.storage.local`):
-
-```javascript
-// Store data
-chrome.storage.local.set({ cardData: data });
-
-// Retrieve data
-chrome.storage.local.get(['cardData'], (result) => {
-  const data = result.cardData || {};
-});
-```
 
 ### Tampermonkey Storage
 
@@ -280,50 +263,6 @@ A modal overlay that displays calculated SubCap information:
 - **Yellow (90-99% or below $1,000 threshold for UOB VS)**: Warning
 - **Red (≥ 100%)**: Limit reached or exceeded
 
-## Chrome Extension Implementation Details
-
-### Manifest V3 Configuration
-
-```json
-{
-  "manifest_version": 3,
-  "name": "HeyMax SubCaps Viewer",
-  "version": "1.0",
-  "permissions": ["storage"],
-  "host_permissions": ["https://heymax.ai/cards/your-cards/*"],
-  "content_scripts": [{
-    "matches": ["https://heymax.ai/cards/your-cards/*"],
-    "js": ["content.js"],
-    "run_at": "document_start"
-  }],
-  "web_accessible_resources": [{
-    "resources": ["injected.js", "calculate_buckets.js"],
-    "matches": ["https://heymax.ai/*"]
-  }]
-}
-```
-
-### Script Injection Flow
-
-1. **content.js** runs at `document_start` (before page scripts)
-2. Injects `injected.js` into page context via script tag
-3. `injected.js` performs monkey patching and UI injection
-4. Communication between content script and injected script via custom events
-
-### Event Communication
-
-```javascript
-// In injected.js - send data to content script
-window.dispatchEvent(new CustomEvent('api-response', {
-  detail: { url, data, timestamp }
-}));
-
-// In content.js - receive and store data
-window.addEventListener('api-response', (event) => {
-  chrome.storage.local.set({ /* data */ });
-});
-```
-
 ## Tampermonkey Implementation Details
 
 ### Userscript Metadata
@@ -341,21 +280,14 @@ window.addEventListener('api-response', (event) => {
 // ==/UserScript==
 ```
 
-### Key Differences from Extension
+### Key Features
 
-1. **No separation between content/injected scripts** - runs directly in page context
-2. **Uses GM_getValue/GM_setValue** instead of chrome.storage
+1. **Runs directly in page context** - no separation between content/injected scripts
+2. **Uses GM_getValue/GM_setValue** for persistent storage
 3. **Automatic updates** via Tampermonkey's update mechanism
-4. **Cross-browser compatible** (Chrome, Firefox, Safari, Opera)
+4. **Cross-browser compatible** (Chrome, Firefox, Safari, Opera, Edge Mobile)
 
 ## Testing
-
-### Manual Testing
-
-Test files are available in `src/test/`:
-
-- **test.html**: Interactive test page simulating HeyMax API responses
-- **TESTING.md**: Detailed testing instructions and scenarios
 
 ### Test Scenarios
 
@@ -367,7 +299,7 @@ Test files are available in `src/test/`:
 
 ### Console Logging
 
-Both implementations provide detailed console logging:
+The implementation provides detailed console logging:
 
 ```javascript
 console.log('URL:', requestUrl);
@@ -387,14 +319,10 @@ console.log('SubCaps calculated:', subcaps);
 
 ### Content Security Policy (CSP) Compatibility
 
-The implementations work within browser CSP restrictions:
-
-- **Extension**: Uses script injection allowed by manifest permissions
-- **Tampermonkey**: Runs with elevated privileges via GM_* APIs
+The Tampermonkey implementation runs with elevated privileges via GM_* APIs, allowing it to work within browser CSP restrictions.
 
 ### Storage Security
 
-- **Chrome Extension**: Uses chrome.storage.local (encrypted at rest)
 - **Tampermonkey**: Uses GM storage (isolated per script)
 - **No sensitive data storage**: Only stores transaction metadata visible in HeyMax UI
 
@@ -419,31 +347,20 @@ The implementations work within browser CSP restrictions:
 
 ## Browser Compatibility
 
-### Chrome Extension
-
-- **Supported**: Chrome 88+, Edge 88+ (Manifest V3 support required)
-- **Installation**: Load unpacked extension in developer mode
-
-### Tampermonkey Userscript
+### Desktop Browsers
 
 - **Chrome/Edge**: Full support with Tampermonkey
 - **Firefox**: Full support with Tampermonkey or Greasemonkey
-- **Safari**: Supported with Tampermonkey (desktop only)
+- **Safari**: Supported with Tampermonkey
 - **Opera**: Supported with Tampermonkey
-- **Mobile**: Limited (Firefox Mobile, Kiwi Browser on Android)
+
+### Mobile Browsers
+
+- **Edge Mobile (Recommended)**: Full Tampermonkey support on iOS and Android
+
+**Note**: While Firefox Mobile and Kiwi Browser support Tampermonkey, the HeyMax.ai website doesn't work on them—it redirects users to download the app instead of loading the web interface.
 
 ## Troubleshooting Guide
-
-### Extension Not Activating
-
-**Symptoms**: No console logs on HeyMax pages
-
-**Solutions**:
-1. Verify extension is enabled in chrome://extensions/
-2. Check Developer mode is enabled
-3. Reload extension after code changes
-4. Confirm you're on https://heymax.ai/cards/your-cards/* URL
-5. Check browser console for errors
 
 ### Userscript Not Running
 
@@ -503,12 +420,7 @@ The implementations work within browser CSP restrictions:
 
 **Symptoms**: Data not persisting between page loads
 
-**Chrome Extension**:
-1. Check chrome.storage.local quota (not exceeded)
-2. Verify no browser data clearing between sessions
-3. Check for console errors on storage operations
-
-**Tampermonkey**:
+**Solutions**:
 1. Check Tampermonkey dashboard → Storage tab
 2. Verify script has GM_getValue/GM_setValue grants
 3. Check browser console for GM_* errors
@@ -519,33 +431,21 @@ The implementations work within browser CSP restrictions:
 ### Local Development
 
 1. Clone repository
-2. For extension: Load `src` directory as unpacked extension
-3. For userscript: Copy to Tampermonkey editor
-4. Make changes to files
-5. Extension: Reload extension in chrome://extensions/
-6. Userscript: Save in Tampermonkey editor
-7. Test on https://heymax.ai/cards/your-cards/
+2. Copy userscript to Tampermonkey editor
+3. Make changes to files
+4. Save in Tampermonkey editor
+5. Test on https://heymax.ai/cards/your-cards/
 
 ### Debugging Tips
 
 1. **Use verbose logging**: Enable all console.log statements
-2. **Inspect storage**: Check chrome.storage or GM storage contents
-3. **Test with mock data**: Use test.html for controlled scenarios
-4. **Monitor network**: Browser DevTools Network tab
-5. **Step through code**: Use debugger statements and breakpoints
+2. **Inspect storage**: Check GM storage contents via Tampermonkey dashboard
+3. **Monitor network**: Browser DevTools Network tab
+4. **Step through code**: Use debugger statements and breakpoints
 
 ### Code Organization
 
 ```
-src/
-├── manifest.json           # Extension configuration
-├── content.js              # Content script (extension only)
-├── injected.js             # Main logic (shared approach)
-├── calculate_buckets.js    # SubCap calculation logic
-└── test/
-    ├── test.html           # Test page
-    └── TESTING.md          # Test documentation
-
 tampermonkey/
 ├── heymax-subcaps-viewer.user.js  # Userscript (all-in-one)
 └── README.md                       # Userscript documentation
@@ -573,10 +473,9 @@ tampermonkey/
 For developers interested in contributing:
 
 1. Review this technical documentation
-2. Test changes thoroughly using test.html
-3. Ensure both extension and userscript variants work
-4. Maintain backward compatibility with storage format
-5. Update documentation for any API/logic changes
+2. Test changes thoroughly
+3. Maintain backward compatibility with storage format
+4. Update documentation for any API/logic changes
 
 ## License
 
