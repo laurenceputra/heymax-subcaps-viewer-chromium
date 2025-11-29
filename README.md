@@ -4,6 +4,15 @@ If you're using UOB PPV (Preferred Platinum Visa) or UOB VS (Visa Signature) car
 
 **This Tampermonkey userscript solves that problem.** It automatically tracks your spending across subcap categories and shows you exactly where you are—right when you need it.
 
+## Features
+
+✅ **Visual Subcap Tracking**: See your spending buckets at a glance with color-coded progress indicators  
+✅ **Network Request Monitoring**: Automatically intercepts transaction data from HeyMax  
+✅ **Multi-Card Support**: Works with both UOB PPV and UOB VS cards  
+✅ **Privacy-First**: All data stays in your browser—nothing sent to external servers  
+✅ **Auto-Recovery**: Automatically re-applies patches if they are detected as overwritten  
+✅ **Local Storage**: Persists data using Tampermonkey's secure GM_getValue/GM_setValue API
+
 ## 📱 Use Edge Mobile as a HeyMax App Replacement
 
 **Don't have or want the HeyMax app?** You can use Microsoft Edge on your mobile device with this Tampermonkey script as a full replacement for the HeyMax app — with the added benefit of subcap tracking that the official app doesn't provide!
@@ -14,13 +23,7 @@ If you're using UOB PPV (Preferred Platinum Visa) or UOB VS (Visa Signature) car
 - **Plus Subcap Tracking**: This script adds subcap tracking functionality that even the official app lacks
 - **Privacy**: All calculations happen locally on your device
 
-### Quick Setup on Edge Mobile
-1. Install **Microsoft Edge** from your app store ([iOS](https://apps.apple.com/app/microsoft-edge/id1288723196) / [Android](https://play.google.com/store/apps/details?id=com.microsoft.emmx))
-2. Open Edge and go to **Settings → Extensions → Get extensions from store**
-3. Search for and install **Tampermonkey**
-4. Create a new script in Tampermonkey and paste the contents of [`tampermonkey/heymax-subcaps-viewer.user.js`](tampermonkey/heymax-subcaps-viewer.user.js)
-5. Navigate to https://heymax.ai and log in
-6. Browse to your card details and click the green "Subcaps" button
+**Note**: While Firefox Mobile and Kiwi Browser support Tampermonkey, the HeyMax.ai website doesn't work on them—it redirects users to download the app instead of loading the web interface.
 
 ### Add HeyMax to Your Homescreen
 For quick access like a native app, add HeyMax to your homescreen:
@@ -39,19 +42,17 @@ For quick access like a native app, add HeyMax to your homescreen:
 
 Now you can launch HeyMax directly from your homescreen—just like an app!
 
-## What This Script Does for You
+## Supported Cards
 
-### Visual Subcap Tracking at a Glance
+- **UOB Preferred Platinum Visa (PPV)** — both buckets have a $600 limit and transactions are rounded down to the nearest $5:
+  - Tracks contactless payments
+  - Tracks eligible online transactions across shopping, dining, and entertainment MCCs
 
-No more spreadsheets. No more guesswork. When you're viewing your UOB card details on HeyMax, this script adds a floating "Subcaps" button to your page. Click it, and you'll see:
+- **UOB Visa Signature (VS)** — both buckets have a $1,200 limit and require spending at least $1,000 to earn bonus miles:
+  - Tracks contactless payments (excluding foreign currency)
+  - Tracks foreign currency transactions in any currency other than SGD
 
-- **For UOB PPV cardholders:**
-  - Your contactless bucket spend (out of $600 limit)
-  - Your eligible online transaction spend (out of $600 limit)
-
-- **For UOB VS cardholders:**
-  - Your contactless bucket spend (out of $1,200 limit)
-  - Your foreign currency transaction spend (out of $1,200 limit)
+## Screenshots
 
 The overlay uses color coding to help you understand your status instantly:
 - **Green:** You're on track
@@ -66,39 +67,17 @@ The overlay uses color coding to help you understand your status instantly:
 
 ![UOB VS Subcaps Overlay](assets/uob_vs.jpg)
 
-### Completely Private & Secure
-
-Your transaction data is sensitive, and this script treats it that way:
-
-- **No external requests:** The script doesn't send any data outside your browser. Not to us, not to anyone.
-- **Read-only operation:** It only intercepts and reads the transaction data that HeyMax is already loading for you. It doesn't modify anything.
-- **Local storage only:** All calculations happen in your browser, and data is stored locally using Tampermonkey's secure storage.
-
-This isn't some third-party service collecting your spending habits. It's a simple tool that works entirely on your machine, giving you visibility without compromising your privacy.
-
-## Supported Cards
-
-This script currently supports:
-
-- **UOB Preferred Platinum Visa (PPV)** — both buckets have a $600 limit and transactions are rounded down to the nearest $5:
-  - Tracks contactless payments
-  - Tracks eligible online transactions across shopping, dining, and entertainment MCCs
-
-- **UOB Visa Signature (VS)** — both buckets have a $1,200 limit and require spending at least $1,000 to earn bonus miles:
-  - Tracks contactless payments (excluding foreign currency)
-  - Tracks foreign currency transactions in any currency other than SGD
-
 ## Installation
 
 ### Edge Mobile (Recommended for Mobile Users)
 
 **Best option for using HeyMax on your phone without the app:**
 
-1. Install **Microsoft Edge** browser on your mobile device
+1. Install **Microsoft Edge** browser on your mobile device ([iOS](https://apps.apple.com/app/microsoft-edge/id1288723196) / [Android](https://play.google.com/store/apps/details?id=com.microsoft.emmx))
 2. Open Edge, tap **≡** (menu) → **Extensions** → **Get extensions from store**
 3. Search for **Tampermonkey** and install it
 4. Open Tampermonkey and tap **Create a new script**
-5. Delete the default template and paste the entire contents of [`tampermonkey/heymax-subcaps-viewer.user.js`](tampermonkey/heymax-subcaps-viewer.user.js)
+5. Delete the default template and paste the entire contents of [`src/heymax-subcaps-viewer.user.js`](src/heymax-subcaps-viewer.user.js)
 6. Save the script
 7. Navigate to https://heymax.ai/cards/your-cards/ and view your card details
 8. Click the green "Subcaps" button that appears in the bottom-right corner
@@ -109,26 +88,38 @@ This script currently supports:
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) in your browser:
    - [Chrome/Edge](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojnmoofnopnkmjmkc)
-   - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/)
+   - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) or [Greasemonkey](https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/)
    - [Safari](https://apps.apple.com/app/tampermonkey/id1482490089)
    - [Opera](https://addons.opera.com/extensions/details/tampermonkey-beta/)
 2. Click on the Tampermonkey icon and select "Create a new script..."
-3. Copy the entire contents of [`tampermonkey/heymax-subcaps-viewer.user.js`](tampermonkey/heymax-subcaps-viewer.user.js)
-4. Paste it into the Tampermonkey editor and save
-5. Navigate to https://heymax.ai/cards/your-cards/ and view your card details
-6. Click the green "Subcaps" button that appears in the bottom-right corner
+3. Delete the default template
+4. Copy the entire contents of [`src/heymax-subcaps-viewer.user.js`](src/heymax-subcaps-viewer.user.js)
+5. Paste it into the Tampermonkey editor and save (Ctrl+S / Cmd+S)
+6. Navigate to https://heymax.ai/cards/your-cards/ and view your card details
+7. Click the green "Subcaps" button that appears in the bottom-right corner
 
-See [tampermonkey/README.md](tampermonkey/README.md) for detailed instructions.
+## Usage
 
-## How It Works
+Once installed, the script will automatically:
 
-1. **Install** the Tampermonkey userscript
-2. **Visit your card page** on HeyMax (https://heymax.ai/cards/your-cards/[your-card-id])
-3. **Wait a moment** for the page to load your transaction data
-4. **Click the green "Subcaps" button** that appears in the bottom-right corner
-5. **See your spend breakdown** in a clean overlay
+1. Monitor all network requests on https://heymax.ai/* pages
+2. Intercept and store relevant API responses
+3. Display a "Subcaps" button on supported card detail pages
 
-That's it. No configuration. No setup. It just works.
+### Viewing SubCaps Data
+
+1. Navigate to a supported card detail page (e.g., https://heymax.ai/cards/your-cards/[card-id])
+2. Wait for the page to load your transaction data
+3. Once data is loaded, a green "Subcaps" button will appear in the bottom-right corner
+4. Click the button to view your SubCaps analysis in an overlay modal
+
+### Console Logs (For Debugging)
+
+Open the browser console (F12 or Ctrl+Shift+I) to see:
+- Network request interception logs
+- API response data
+- Storage operations
+- Button visibility checks
 
 ## FAQ
 
@@ -139,10 +130,6 @@ Edge Mobile with this script gives you everything the HeyMax website offers, plu
 ### Will this work with other credit cards?
 
 Not yet. The script is specifically designed for UOB PPV and UOB VS cards because they have unique subcap structures. We may add support for other cards in the future.
-
-### Does this work on other mobile browsers?
-
-Edge Mobile is the only recommended mobile browser. While other browsers like Firefox Mobile and Kiwi Browser support Tampermonkey, the HeyMax.ai website doesn't work on them—it redirects users to download the app instead of loading the web interface.
 
 ### What if my subcap numbers don't match what UOB shows?
 
@@ -177,13 +164,34 @@ The code is open-source, so you can review it yourself. It doesn't send any data
 **The script isn't working at all:**
 - Ensure Tampermonkey is installed and enabled
 - Verify the script is active in Tampermonkey's dashboard
-- Verify you're on https://heymax.ai/cards/your-cards/* pages
+- Verify you're on https://heymax.ai/* pages
 - Try disabling other browser extensions that might conflict
+
+**Data not persisting:**
+- Tampermonkey storage is isolated per script
+- Clearing browser data may not affect Tampermonkey storage
+- To reset, open Tampermonkey dashboard → Storage → Delete values
+
+**Console shows "Patches being overwritten" warnings:**
+- This is normal behavior when other scripts modify fetch/XHR
+- The script automatically detects and re-applies patches every second
+
+## Security & Privacy
+
+Your transaction data is sensitive, and this script treats it that way:
+
+- **No external requests:** The script doesn't send any data outside your browser. Not to us, not to anyone.
+- **Read-only operation:** It only intercepts and reads the transaction data that HeyMax is already loading for you. It doesn't modify anything.
+- **Local storage only:** All calculations happen in your browser, and data is stored locally using Tampermonkey's secure storage.
+- **Minimal permissions:** Only runs on HeyMax domain
+
+This isn't some third-party service collecting your spending habits. It's a simple tool that works entirely on your machine, giving you visibility without compromising your privacy.
 
 ## Documentation
 
-- **[TECHNICAL_DESIGN.md](TECHNICAL_DESIGN.md)** - Comprehensive technical documentation including architecture overview, network interception details, data storage structure, SubCap calculation logic, and troubleshooting guide for developers and contributors
-- **[tampermonkey/README.md](tampermonkey/README.md)** - Tampermonkey userscript documentation
+For developers and contributors:
+
+- **[docs/TECHNICAL_DESIGN.md](docs/TECHNICAL_DESIGN.md)** - Comprehensive technical documentation including architecture overview, network interception details, data storage structure, SubCap calculation logic, and troubleshooting guide
 
 ## License
 

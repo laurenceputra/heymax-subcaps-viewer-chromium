@@ -446,9 +446,16 @@ The Tampermonkey implementation runs with elevated privileges via GM_* APIs, all
 ### Code Organization
 
 ```
-tampermonkey/
-├── heymax-subcaps-viewer.user.js  # Userscript (all-in-one)
-└── README.md                       # Userscript documentation
+/
+├── src/
+│   └── heymax-subcaps-viewer.user.js  # Tampermonkey userscript
+├── docs/
+│   └── TECHNICAL_DESIGN.md            # This technical documentation
+├── assets/
+│   ├── uob_ppv.jpg                    # Screenshot for UOB PPV
+│   └── uob_vs.jpg                     # Screenshot for UOB VS
+├── README.md                          # Main user documentation
+└── LICENSE                            # MIT License
 ```
 
 ## Future Enhancements
