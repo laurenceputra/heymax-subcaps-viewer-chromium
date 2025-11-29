@@ -15,6 +15,16 @@
 // @grant        unsafeWindow
 // ==/UserScript==
 
+// ============================================================================
+// MIGRATION NOTICE
+// ============================================================================
+// This script location has been deprecated. Future updates will be served from:
+// https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/raw/refs/heads/main/src/heymax-subcaps-viewer.user.js
+//
+// The @updateURL and @downloadURL above point to the new location, so your
+// Tampermonkey should automatically update to the correct version.
+// ============================================================================
+
 (function() {
     'use strict';
 
