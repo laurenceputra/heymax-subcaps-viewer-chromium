@@ -10,7 +10,7 @@ Many users have installed the script from this location before we reorganized to
 
 This directory contains a **copy** of the main userscript for backward compatibility with users who installed from:
 ```
-https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/raw/refs/heads/main/tampermonkey/heymax-subcaps-viewer.user.js
+https://github.com/laurenceputra/heymax-subcaps-viewer/raw/refs/heads/main/tampermonkey/heymax-subcaps-viewer.user.js
 ```
 
 ## Maintenance Guidelines
