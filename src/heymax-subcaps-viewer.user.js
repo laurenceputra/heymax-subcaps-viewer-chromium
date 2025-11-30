@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HeyMax SubCaps Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.2.0
+// @version      1.4.0
 // @description  Monitor network requests and display SubCaps calculations for UOB cards on HeyMax
 // @author       Laurence Putra Franslay (@laurenceputra)
 // @source       https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/
@@ -128,9 +128,9 @@
             }
         }
         
-        // Get existing card data
+        // Get existing card data with safe parsing
         const cardDataStr = GM_getValue('cardData', '{}');
-        const cardData = JSON.parse(cardDataStr);
+        const cardData = safeJSONParse(cardDataStr, {});
         
         debugLog('[HeyMax SubCaps Viewer] Current cardData before update:', cardData);
         
@@ -315,8 +315,107 @@
         return match ? match[1] : null;
     }
 
+    // ============================================================================
+    // API RESPONSE VALIDATION
+    // ============================================================================
+
+    // Validate transaction object structure
+    function validateTransaction(transactionObj) {
+        if (!transactionObj || typeof transactionObj !== 'object') {
+            debugLog('[HeyMax SubCaps Viewer] Invalid transaction object:', transactionObj);
+            return null;
+        }
+
+        const transaction = transactionObj.transaction;
+        if (!transaction || typeof transaction !== 'object') {
+            debugLog('[HeyMax SubCaps Viewer] Missing transaction property:', transactionObj);
+            return null;
+        }
+
+        // Validate required fields
+        const requiredFields = ['base_currency_amount'];
+        const missingFields = requiredFields.filter(field => transaction[field] === undefined);
+        
+        if (missingFields.length > 0) {
+            debugLog('[HeyMax SubCaps Viewer] Missing required transaction fields:', missingFields);
+            return null;
+        }
+
+        // Validate amount is a number
+        if (typeof transaction.base_currency_amount !== 'number' || isNaN(transaction.base_currency_amount)) {
+            debugLog('[HeyMax SubCaps Viewer] Invalid base_currency_amount:', transaction.base_currency_amount);
+            return null;
+        }
+
+        return transaction;
+    }
+
+    // Validate transactions array
+    function validateTransactionsArray(apiResponse) {
+        if (!Array.isArray(apiResponse)) {
+            errorLog('API response is not an array:', typeof apiResponse);
+            return [];
+        }
+
+        const validTransactions = [];
+        apiResponse.forEach((transactionObj, index) => {
+            const validatedTransaction = validateTransaction(transactionObj);
+            if (validatedTransaction) {
+                validTransactions.push({ transaction: validatedTransaction });
+            } else {
+                debugLog(`[HeyMax SubCaps Viewer] Skipping invalid transaction at index ${index}`);
+            }
+        });
+
+        return validTransactions;
+    }
+
+    // Validate card tracker data structure
+    function validateCardTracker(cardTrackerData) {
+        if (!cardTrackerData || typeof cardTrackerData !== 'object') {
+            debugLog('[HeyMax SubCaps Viewer] Invalid card tracker data:', cardTrackerData);
+            return null;
+        }
+
+        if (!cardTrackerData.card || typeof cardTrackerData.card !== 'object') {
+            debugLog('[HeyMax SubCaps Viewer] Missing card object in tracker data');
+            return null;
+        }
+
+        if (!cardTrackerData.card.short_name) {
+            debugLog('[HeyMax SubCaps Viewer] Missing card short_name');
+            return null;
+        }
+
+        return cardTrackerData;
+    }
+
+    // Safely parse JSON with error handling
+    function safeJSONParse(jsonString, defaultValue = {}) {
+        try {
+            return JSON.parse(jsonString);
+        } catch (error) {
+            errorLog('Failed to parse JSON:', error);
+            return defaultValue;
+        }
+    }
+
     // Calculate buckets from transaction data
     function calculateBuckets(apiResponse, cardShortName = 'UOB PPV') {
+        // Validate input
+        if (!apiResponse) {
+            errorLog('calculateBuckets: apiResponse is null or undefined');
+            return { contactless: 0, online: 0, foreignCurrency: 0, error: 'No transaction data' };
+        }
+
+        // Validate transactions array
+        const validatedTransactions = validateTransactionsArray(apiResponse);
+        
+        if (validatedTransactions.length === 0 && apiResponse.length > 0) {
+            errorLog('calculateBuckets: All transactions failed validation');
+            return { contactless: 0, online: 0, foreignCurrency: 0, error: 'Invalid transaction format' };
+        }
+
         const ppvShoppingMcc = [4816, 5262, 5306, 5309, 5310, 5311, 5331, 5399, 5611, 5621, 5631, 5641, 5651, 5661, 5691, 5699, 5732, 5733, 5734, 5735, 5912, 5942, 5944, 5945, 5946, 5947, 5948, 5949, 5964, 5965, 5966, 5967, 5968, 5969, 5970, 5992, 5999];
         const ppvDiningMcc = [5811, 5812, 5814, 5333, 5411, 5441, 5462, 5499, 8012, 9751];
         const ppvEntertainmentMcc = [7278, 7832, 7841, 7922, 7991, 7996, 7998, 7999];
@@ -358,7 +457,7 @@
         let foreignCurrencyBucket = 0;
 
         if (cardShortName === 'UOB VS') {
-            apiResponse.forEach((transactionObj) => {
+            validatedTransactions.forEach((transactionObj) => {
                 const transaction = transactionObj.transaction;
                 
                 if (isBlacklisted(transaction)) {
@@ -374,7 +473,7 @@
 
             return { contactless: contactlessBucket, foreignCurrency: foreignCurrencyBucket };
         } else {
-            apiResponse.forEach((transactionObj) => {
+            validatedTransactions.forEach((transactionObj) => {
                 const transaction = transactionObj.transaction;
                 
                 if (isBlacklisted(transaction)) {
@@ -398,7 +497,7 @@
     // Check if button should be visible
     function shouldShowButton(cardId) {
         const cardDataStr = GM_getValue('cardData', '{}');
-        const cardData = JSON.parse(cardDataStr);
+        const cardData = safeJSONParse(cardDataStr, {});
 
         debugLog('[HeyMax SubCaps Viewer] Checking visibility - cardData:', cardData);
         debugLog('[HeyMax SubCaps Viewer] Checking visibility - cardId:', cardId);
@@ -575,26 +674,26 @@
 
         const cardId = extractCardIdFromUrl();
         const cardDataStr = GM_getValue('cardData', '{}');
-        const cardData = JSON.parse(cardDataStr);
+        const cardData = safeJSONParse(cardDataStr, {});
 
         debugLog('[HeyMax SubCaps Viewer] showOverlay - cardData:', cardData);
         debugLog('[HeyMax SubCaps Viewer] showOverlay - cardId:', cardId);
 
         if (!cardData || !cardId || !cardData[cardId]) {
-            resultsDiv.innerHTML = '<p style="color: #f44336;">Error: No card data found</p>';
+            resultsDiv.innerHTML = '<p style="color: #f44336;">Error: No card data found. Please refresh the page and try again.</p>';
             return;
         }
 
         const transactionsData = cardData[cardId].transactions;
         if (!transactionsData || !transactionsData.data) {
-            resultsDiv.innerHTML = '<p style="color: #f44336;">Error: No transaction data available</p>';
+            resultsDiv.innerHTML = '<p style="color: #f44336;">Error: No transaction data available. Please wait for transactions to load.</p>';
             return;
         }
 
+        // Validate card tracker data
         const cardTrackerData = cardData[cardId].card_tracker;
-        const cardShortName = cardTrackerData && cardTrackerData.data && cardTrackerData.data.card
-            ? cardTrackerData.data.card.short_name
-            : 'UOB PPV';
+        const validatedCardTracker = cardTrackerData?.data ? validateCardTracker(cardTrackerData.data) : null;
+        const cardShortName = validatedCardTracker?.card?.short_name || 'UOB PPV';
 
         if (titleElement) {
             titleElement.textContent = `${cardShortName} Subcaps Analysis`;
@@ -602,12 +701,29 @@
 
         try {
             const transactions = transactionsData.data;
+            
+            if (!Array.isArray(transactions)) {
+                throw new Error('Transaction data is not in the expected array format');
+            }
+            
             const results = calculateBuckets(transactions, cardShortName);
+            
+            if (results.error) {
+                throw new Error(results.error);
+            }
 
             displayResults(results, transactions.length, cardShortName);
         } catch (error) {
             errorLog('Error calculating data:', error);
-            resultsDiv.innerHTML = '<p style="color: #f44336;">Error calculating data: ' + error.message + '</p>';
+            resultsDiv.innerHTML = `
+                <p style="color: #f44336;">Error calculating subcaps: ${error.message}</p>
+                <p style="color: #666; font-size: 14px; margin-top: 10px;">
+                    This may be due to an unexpected API response format. Please try refreshing the page.
+                </p>
+                <p style="color: #666; font-size: 14px;">
+                    If the problem persists, please check the console for more details.
+                </p>
+            `;
         }
     }
 
