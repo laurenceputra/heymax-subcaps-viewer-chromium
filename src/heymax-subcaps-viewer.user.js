@@ -315,7 +315,29 @@
         return match ? match[1] : null;
     }
 
-    // Calculate buckets from transaction data
+    /**
+     * Calculate bucket totals from transaction data for UOB cards.
+     * 
+     * @param {Array<Object>} apiResponse - Array of transaction objects from the HeyMax API.
+     * @param {string} [cardShortName='UOB PPV'] - Card type ('UOB PPV' or 'UOB VS').
+     * @param {boolean} [includeDetails=false] - If true, includes detailed transaction categorization in result.details.
+     * @returns {Object} An object containing bucket totals and, if includeDetails is true, a details object.
+     *   For UOB PPV: { contactless: number, online: number, details?: Object }
+     *   For UOB VS: { contactless: number, foreignCurrency: number, details?: Object }
+     *   When includeDetails is true, details contains:
+     *     {
+     *       included: {
+     *         contactless: Array<{merchant, amount, roundedAmount?, date}>,
+     *         online: Array<{merchant, amount, roundedAmount, mcc, date}>,
+     *         foreignCurrency: Array<{merchant, amount, currency, date}>
+     *       },
+     *       excluded: {
+     *         blacklisted: Array<{merchant, amount, reason, mcc, date}>,
+     *         notEligible: Array<{merchant, amount, mcc, reason, date}>,
+     *         ineligibleTransaction: Array<{merchant, amount, paymentMethod, date}>
+     *       }
+     *     }
+     */
     function calculateBuckets(apiResponse, cardShortName = 'UOB PPV', includeDetails = false) {
         const ppvShoppingMcc = [4816, 5262, 5306, 5309, 5310, 5311, 5331, 5399, 5611, 5621, 5631, 5641, 5651, 5661, 5691, 5699, 5732, 5733, 5734, 5735, 5912, 5942, 5944, 5945, 5946, 5947, 5948, 5949, 5964, 5965, 5966, 5967, 5968, 5969, 5970, 5992, 5999];
         const ppvDiningMcc = [5811, 5812, 5814, 5333, 5411, 5441, 5462, 5499, 8012, 9751];
@@ -364,9 +386,9 @@
             });
         };
         
-        // Helper function to track wrong payment method transactions
-        const trackWrongPaymentMethod = (transaction, transactionDetails) => {
-            transactionDetails.excluded.wrongPaymentMethod.push({
+        // Helper function to track ineligible transactions
+        const trackIneligibleTransaction = (transaction, transactionDetails) => {
+            transactionDetails.excluded.ineligibleTransaction.push({
                 merchant: transaction.merchant_name || 'Unknown',
                 amount: transaction.base_currency_amount,
                 paymentMethod: transaction.payment_tag || 'unknown',
@@ -388,7 +410,7 @@
             excluded: {
                 blacklisted: [],
                 notEligible: [],
-                wrongPaymentMethod: []
+                ineligibleTransaction: []
             }
         } : null;
 
@@ -425,7 +447,7 @@
                     }
                 } else {
                     if (includeDetails) {
-                        trackWrongPaymentMethod(transaction, transactionDetails);
+                        trackIneligibleTransaction(transaction, transactionDetails);
                     }
                 }
             });
@@ -485,7 +507,7 @@
                     }
                 } else {
                     if (includeDetails) {
-                        trackWrongPaymentMethod(transaction, transactionDetails);
+                        trackIneligibleTransaction(transaction, transactionDetails);
                     }
                 }
             });
@@ -878,7 +900,27 @@
         }
     }
 
-    // Generate HTML for transaction details
+    /**
+     * Generate HTML for transaction details section.
+     * 
+     * @param {Object} details - Transaction details object with included/excluded categorization.
+     *   Structure:
+     *     {
+     *       included: {
+     *         contactless: Array<{merchant, amount, roundedAmount?, date}>,
+     *         online: Array<{merchant, amount, roundedAmount, mcc, date}>,
+     *         foreignCurrency: Array<{merchant, amount, currency, date}>
+     *       },
+     *       excluded: {
+     *         blacklisted: Array<{merchant, amount, reason, mcc, date}>,
+     *         notEligible: Array<{merchant, amount, mcc, reason, date}>,
+     *         ineligibleTransaction: Array<{merchant, amount, paymentMethod, date}>
+     *       }
+     *     }
+     * @param {string} cardShortName - Card type short name ('UOB PPV' or 'UOB VS') to determine 
+     *   display formatting (e.g., whether to show rounded column for UOB PPV).
+     * @returns {string} HTML string for transaction details tables (included and excluded transactions).
+     */
     function generateTransactionDetailsHTML(details, cardShortName) {
         // Helper function to generate table header cell
         const headerCell = (text, align = 'left') => 
@@ -959,10 +1001,15 @@
             }
         });
         
+        // If no included transactions at all, show a message
+        if (includedSections.every(section => section.count === 0)) {
+            html += '<p style="color: #666; font-style: italic;">No transactions were included in subcap calculations.</p>';
+        }
+        
         // Excluded transactions
         const excludedCount = details.excluded.blacklisted.length + 
                              details.excluded.notEligible.length + 
-                             details.excluded.wrongPaymentMethod.length;
+                             details.excluded.ineligibleTransaction.length;
         
         if (excludedCount > 0) {
             html += '<h4 style="color: #f44336; margin-top: 20px;">Excluded Transactions</h4>';
@@ -1005,10 +1052,10 @@
                 `;
             }
             
-            // Wrong payment method transactions
-            if (details.excluded.wrongPaymentMethod.length > 0) {
+            // Ineligible transactions
+            if (details.excluded.ineligibleTransaction.length > 0) {
                 const headers = headerCell('Merchant') + headerCell('Amount', 'right') + headerCell('Method', 'center');
-                const rows = details.excluded.wrongPaymentMethod.map(txn => {
+                const rows = details.excluded.ineligibleTransaction.map(txn => {
                     return `<tr>` +
                         dataCell(txn.merchant) +
                         dataCell(formatCurrency(txn.amount), 'right') +
@@ -1018,7 +1065,7 @@
                 
                 html += `
                     <div style="margin-bottom: 15px;">
-                        <strong>Wrong Payment Method (${details.excluded.wrongPaymentMethod.length})</strong>
+                        <strong>Ineligible Transaction (${details.excluded.ineligibleTransaction.length})</strong>
                         ${tableWrapper(headers, rows)}
                     </div>
                 `;
