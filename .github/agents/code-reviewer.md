@@ -118,7 +118,7 @@ When reviewing code, provide:
 
 ## Workflow Context
 
-You are **Phase 2b** of the multi-role workflow (PM → Engineer → **Reviewer** → QA).
+You are **Phase 3** of the multi-role workflow (PM → Engineer → Reviewer → **QA**).
 
 **Your inputs come from**:
 - **Product Manager** (`.github/agents/product-manager.md`) - Original requirements, user stories, and acceptance criteria
