@@ -353,8 +353,25 @@
             return null;
         };
         
-        const isBlacklisted = (transaction) => {
-            return getBlacklistReason(transaction) !== null;
+        // Helper function to track blacklisted transactions
+        const trackBlacklistedTransaction = (transaction, blacklistReason, transactionDetails) => {
+            transactionDetails.excluded.blacklisted.push({
+                merchant: transaction.merchant_name || 'Unknown',
+                amount: transaction.base_currency_amount,
+                reason: blacklistReason,
+                mcc: transaction.mcc_code,
+                date: transaction.transaction_date || transaction.date
+            });
+        };
+        
+        // Helper function to track wrong payment method transactions
+        const trackWrongPaymentMethod = (transaction, transactionDetails) => {
+            transactionDetails.excluded.wrongPaymentMethod.push({
+                merchant: transaction.merchant_name || 'Unknown',
+                amount: transaction.base_currency_amount,
+                paymentMethod: transaction.payment_tag || 'unknown',
+                date: transaction.transaction_date || transaction.date
+            });
         };
 
         let contactlessBucket = 0;
@@ -382,13 +399,7 @@
                 const blacklistReason = getBlacklistReason(transaction);
                 if (blacklistReason) {
                     if (includeDetails) {
-                        transactionDetails.excluded.blacklisted.push({
-                            merchant: transaction.merchant_name || 'Unknown',
-                            amount: transaction.base_currency_amount,
-                            reason: blacklistReason,
-                            mcc: transaction.mcc_code,
-                            date: transaction.transaction_date || transaction.date
-                        });
+                        trackBlacklistedTransaction(transaction, blacklistReason, transactionDetails);
                     }
                     return;
                 }
@@ -414,12 +425,7 @@
                     }
                 } else {
                     if (includeDetails) {
-                        transactionDetails.excluded.wrongPaymentMethod.push({
-                            merchant: transaction.merchant_name || 'Unknown',
-                            amount: transaction.base_currency_amount,
-                            paymentMethod: transaction.payment_tag || 'unknown',
-                            date: transaction.transaction_date || transaction.date
-                        });
+                        trackWrongPaymentMethod(transaction, transactionDetails);
                     }
                 }
             });
@@ -436,13 +442,7 @@
                 const blacklistReason = getBlacklistReason(transaction);
                 if (blacklistReason) {
                     if (includeDetails) {
-                        transactionDetails.excluded.blacklisted.push({
-                            merchant: transaction.merchant_name || 'Unknown',
-                            amount: transaction.base_currency_amount,
-                            reason: blacklistReason,
-                            mcc: transaction.mcc_code,
-                            date: transaction.transaction_date || transaction.date
-                        });
+                        trackBlacklistedTransaction(transaction, blacklistReason, transactionDetails);
                     }
                     return;
                 }
@@ -485,12 +485,7 @@
                     }
                 } else {
                     if (includeDetails) {
-                        transactionDetails.excluded.wrongPaymentMethod.push({
-                            merchant: transaction.merchant_name || 'Unknown',
-                            amount: transaction.base_currency_amount,
-                            paymentMethod: transaction.payment_tag || 'unknown',
-                            date: transaction.transaction_date || transaction.date
-                        });
+                        trackWrongPaymentMethod(transaction, transactionDetails);
                     }
                 }
             });
@@ -885,6 +880,50 @@
 
     // Generate HTML for transaction details
     function generateTransactionDetailsHTML(details, cardShortName) {
+        // Helper function to generate table header cell
+        const headerCell = (text, align = 'left') => 
+            `<th style="padding: 8px; text-align: ${align}; border-bottom: 1px solid #ddd;">${text}</th>`;
+        
+        // Helper function to generate table data cell
+        const dataCell = (text, align = 'left', fontSize = null) => {
+            const fontSizeStyle = fontSize ? ` font-size: ${fontSize};` : '';
+            return `<td style="padding: 6px 8px; text-align: ${align};${fontSizeStyle} border-bottom: 1px solid #eee;">${text}</td>`;
+        };
+        
+        // Helper function to format currency
+        const formatCurrency = (amount) => `$${amount.toFixed(2)}`;
+        
+        // Helper function to check if rounded column should be shown
+        const showRoundedColumn = cardShortName === 'UOB PPV';
+        
+        // Helper function to generate included transaction row
+        const generateIncludedRow = (txn) => {
+            let row = `<tr>`;
+            row += dataCell(txn.merchant);
+            row += dataCell(formatCurrency(txn.amount), 'right');
+            if (showRoundedColumn && txn.roundedAmount !== undefined) {
+                row += dataCell(formatCurrency(txn.roundedAmount), 'right');
+            }
+            row += `</tr>`;
+            return row;
+        };
+        
+        // Helper function to generate table wrapper
+        const tableWrapper = (headers, rows) => `
+            <div style="max-height: 200px; overflow-y: auto; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: #f5f5f5;">
+                            ${headers}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
         let html = '';
         
         // Included transactions
@@ -902,37 +941,19 @@
         
         includedSections.forEach(section => {
             if (section.count > 0) {
+                // Build headers
+                let headers = headerCell('Merchant') + headerCell('Amount', 'right');
+                if (showRoundedColumn) {
+                    headers += headerCell('Rounded', 'right');
+                }
+                
+                // Build rows
+                const rows = details.included[section.key].map(generateIncludedRow).join('');
+                
                 html += `
                     <div style="margin-bottom: 15px;">
                         <strong>${section.title} (${section.count})</strong>
-                        <div style="max-height: 200px; overflow-y: auto; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
-                            <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
-                                <thead>
-                                    <tr style="background-color: #f5f5f5;">
-                                        <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Merchant</th>
-                                        <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">Amount</th>
-                                        ${cardShortName === 'UOB PPV' ? '<th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">Rounded</th>' : ''}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                `;
-                
-                details.included[section.key].forEach(txn => {
-                    html += `
-                        <tr>
-                            <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${txn.merchant}</td>
-                            <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">$${txn.amount.toFixed(2)}</td>
-                            ${cardShortName === 'UOB PPV' && txn.roundedAmount !== undefined ? 
-                                `<td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">$${txn.roundedAmount.toFixed(2)}</td>` : 
-                                ''}
-                        </tr>
-                    `;
-                });
-                
-                html += `
-                                </tbody>
-                            </table>
-                        </div>
+                        ${tableWrapper(headers, rows)}
                     </div>
                 `;
             }
@@ -946,104 +967,59 @@
         if (excludedCount > 0) {
             html += '<h4 style="color: #f44336; margin-top: 20px;">Excluded Transactions</h4>';
             
+            // Blacklisted transactions
             if (details.excluded.blacklisted.length > 0) {
+                const headers = headerCell('Merchant') + headerCell('Amount', 'right') + headerCell('Reason');
+                const rows = details.excluded.blacklisted.map(txn => {
+                    return `<tr>` +
+                        dataCell(txn.merchant) +
+                        dataCell(formatCurrency(txn.amount), 'right') +
+                        dataCell(txn.reason, 'left', '11px') +
+                        `</tr>`;
+                }).join('');
+                
                 html += `
                     <div style="margin-bottom: 15px;">
                         <strong>Blacklisted (${details.excluded.blacklisted.length})</strong>
-                        <div style="max-height: 200px; overflow-y: auto; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
-                            <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
-                                <thead>
-                                    <tr style="background-color: #f5f5f5;">
-                                        <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Merchant</th>
-                                        <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">Amount</th>
-                                        <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Reason</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                `;
-                
-                details.excluded.blacklisted.forEach(txn => {
-                    html += `
-                        <tr>
-                            <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${txn.merchant}</td>
-                            <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">$${txn.amount.toFixed(2)}</td>
-                            <td style="padding: 6px 8px; font-size: 11px; color: #666; border-bottom: 1px solid #eee;">${txn.reason}</td>
-                        </tr>
-                    `;
-                });
-                
-                html += `
-                                </tbody>
-                            </table>
-                        </div>
+                        ${tableWrapper(headers, rows)}
                     </div>
                 `;
             }
             
+            // Not eligible MCC transactions
             if (details.excluded.notEligible.length > 0) {
+                const headers = headerCell('Merchant') + headerCell('Amount', 'right') + headerCell('MCC', 'center');
+                const rows = details.excluded.notEligible.map(txn => {
+                    return `<tr>` +
+                        dataCell(txn.merchant) +
+                        dataCell(formatCurrency(txn.amount), 'right') +
+                        dataCell(txn.mcc, 'center', '11px') +
+                        `</tr>`;
+                }).join('');
+                
                 html += `
                     <div style="margin-bottom: 15px;">
                         <strong>Not Eligible MCC (${details.excluded.notEligible.length})</strong>
-                        <div style="max-height: 200px; overflow-y: auto; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
-                            <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
-                                <thead>
-                                    <tr style="background-color: #f5f5f5;">
-                                        <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Merchant</th>
-                                        <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">Amount</th>
-                                        <th style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd;">MCC</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                `;
-                
-                details.excluded.notEligible.forEach(txn => {
-                    html += `
-                        <tr>
-                            <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${txn.merchant}</td>
-                            <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">$${txn.amount.toFixed(2)}</td>
-                            <td style="padding: 6px 8px; text-align: center; font-size: 11px; border-bottom: 1px solid #eee;">${txn.mcc}</td>
-                        </tr>
-                    `;
-                });
-                
-                html += `
-                                </tbody>
-                            </table>
-                        </div>
+                        ${tableWrapper(headers, rows)}
                     </div>
                 `;
             }
             
+            // Wrong payment method transactions
             if (details.excluded.wrongPaymentMethod.length > 0) {
+                const headers = headerCell('Merchant') + headerCell('Amount', 'right') + headerCell('Method', 'center');
+                const rows = details.excluded.wrongPaymentMethod.map(txn => {
+                    return `<tr>` +
+                        dataCell(txn.merchant) +
+                        dataCell(formatCurrency(txn.amount), 'right') +
+                        dataCell(txn.paymentMethod, 'center', '11px') +
+                        `</tr>`;
+                }).join('');
+                
                 html += `
                     <div style="margin-bottom: 15px;">
                         <strong>Wrong Payment Method (${details.excluded.wrongPaymentMethod.length})</strong>
-                        <div style="max-height: 200px; overflow-y: auto; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
-                            <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
-                                <thead>
-                                    <tr style="background-color: #f5f5f5;">
-                                        <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Merchant</th>
-                                        <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">Amount</th>
-                                        <th style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd;">Method</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                `;
-                
-                details.excluded.wrongPaymentMethod.forEach(txn => {
-                    html += `
-                        <tr>
-                            <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${txn.merchant}</td>
-                            <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">$${txn.amount.toFixed(2)}</td>
-                            <td style="padding: 6px 8px; text-align: center; font-size: 11px; border-bottom: 1px solid #eee;">${txn.paymentMethod}</td>
-                        </tr>
-                    `;
-                });
-                
-                html += `
-                                </tbody>
-                            </table>
-                        </div>
+                        ${tableWrapper(headers, rows)}
                     </div>
                 `;
             }
