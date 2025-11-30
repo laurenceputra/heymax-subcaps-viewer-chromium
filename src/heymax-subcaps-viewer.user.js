@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HeyMax SubCaps Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.2.0
+// @version      1.2.1
 // @description  Monitor network requests and display SubCaps calculations for UOB cards on HeyMax
 // @author       Laurence Putra Franslay (@laurenceputra)
 // @source       https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/
@@ -336,6 +336,12 @@
         
         const roundDownToNearestFive = (amount) => Math.floor(amount / 5) * 5;
         
+        // Helper function to safely get payment method with fallback
+        // HeyMax API may use either payment_tag, payment_mode, or payment_type
+        const getPaymentMethod = (transaction) => {
+            return transaction.payment_tag || transaction.payment_mode || transaction.payment_type || null;
+        };
+        
         const isBlacklisted = (transaction) => {
             const mccCode = parseInt(transaction.mcc_code, 10);
             if (blacklistMcc.includes(mccCode)) {
@@ -365,9 +371,11 @@
                     return;
                 }
 
+                const paymentMethod = getPaymentMethod(transaction);
+
                 if (transaction.original_currency && transaction.original_currency !== 'SGD') {
                     foreignCurrencyBucket += transaction.base_currency_amount;
-                } else if (transaction.payment_tag === 'contactless') {
+                } else if (paymentMethod === 'contactless') {
                     contactlessBucket += transaction.base_currency_amount;
                 }
             });
@@ -381,9 +389,11 @@
                     return;
                 }
 
-                if (transaction.payment_tag === 'contactless') {
+                const paymentMethod = getPaymentMethod(transaction);
+
+                if (paymentMethod === 'contactless') {
                     contactlessBucket += roundDownToNearestFive(transaction.base_currency_amount);
-                } else if (transaction.payment_tag === 'online') {
+                } else if (paymentMethod === 'online') {
                     const mccCode = parseInt(transaction.mcc_code, 10);
                     if (ppvShoppingMcc.includes(mccCode) || ppvDiningMcc.includes(mccCode) || ppvEntertainmentMcc.includes(mccCode)) {
                         onlineBucket += roundDownToNearestFive(transaction.base_currency_amount);
