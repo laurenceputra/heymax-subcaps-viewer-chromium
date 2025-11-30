@@ -4,9 +4,9 @@
 // @version      1.2.3
 // @description  Monitor network requests and display SubCaps calculations for UOB cards on HeyMax
 // @author       Laurence Putra Franslay (@laurenceputra)
-// @source       https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/
-// @updateURL    https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/raw/refs/heads/main/src/heymax-subcaps-viewer.user.js
-// @downloadURL  https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/raw/refs/heads/main/src/heymax-subcaps-viewer.user.js
+// @source       https://github.com/laurenceputra/heymax-subcaps-viewer/
+// @updateURL    https://github.com/laurenceputra/heymax-subcaps-viewer/raw/refs/heads/main/src/heymax-subcaps-viewer.user.js
+// @downloadURL  https://github.com/laurenceputra/heymax-subcaps-viewer/raw/refs/heads/main/src/heymax-subcaps-viewer.user.js
 // @match        https://heymax.ai/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=heymax.ai
 // @grant        GM_getValue

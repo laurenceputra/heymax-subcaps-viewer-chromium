@@ -76,7 +76,7 @@ The overlay uses color coding to help you understand your status instantly:
 1. Install **Microsoft Edge** browser on your mobile device ([iOS](https://apps.apple.com/app/microsoft-edge/id1288723196) / [Android](https://play.google.com/store/apps/details?id=com.microsoft.emmx))
 2. Open Edge, tap **≡** (menu) → **Extensions** → **Get extensions from store**
 3. Search for **Tampermonkey** and install it
-4. Open the [raw script file](https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/raw/refs/heads/main/src/heymax-subcaps-viewer.user.js) in your browser
+4. Open the [raw script file](https://github.com/laurenceputra/heymax-subcaps-viewer/raw/refs/heads/main/src/heymax-subcaps-viewer.user.js) in your browser
 5. Tampermonkey will automatically detect the userscript and prompt you to install it
 6. Click **Install** to add the script
 7. Navigate to https://heymax.ai/cards/your-cards/ and view your card details
@@ -91,7 +91,7 @@ The overlay uses color coding to help you understand your status instantly:
    - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) or [Greasemonkey](https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/)
    - [Safari](https://apps.apple.com/app/tampermonkey/id1482490089)
    - [Opera](https://addons.opera.com/extensions/details/tampermonkey-beta/)
-2. Open the [raw script file](https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/raw/refs/heads/main/src/heymax-subcaps-viewer.user.js) in your browser
+2. Open the [raw script file](https://github.com/laurenceputra/heymax-subcaps-viewer/raw/refs/heads/main/src/heymax-subcaps-viewer.user.js) in your browser
 3. Tampermonkey will automatically detect the userscript and prompt you to install it
 4. Click **Install** to add the script
 5. Navigate to https://heymax.ai/cards/your-cards/ and view your card details
