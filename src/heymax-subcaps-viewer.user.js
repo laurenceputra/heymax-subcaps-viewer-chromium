@@ -886,8 +886,8 @@
         
         // Helper function to generate table data cell
         const dataCell = (text, align = 'left', fontSize = null) => {
-            const fontSizeStyle = fontSize ? ` font-size: ${fontSize};` : '';
-            return `<td style="padding: 6px 8px; text-align: ${align};${fontSizeStyle} border-bottom: 1px solid #eee;">${text}</td>`;
+            const fontSizeStyle = fontSize ? `font-size: ${fontSize}; ` : '';
+            return `<td style="padding: 6px 8px; text-align: ${align}; ${fontSizeStyle}border-bottom: 1px solid #eee;">${text}</td>`;
         };
         
         // Helper function to format currency
