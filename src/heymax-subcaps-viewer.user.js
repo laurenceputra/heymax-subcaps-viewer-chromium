@@ -336,12 +336,6 @@
         
         const roundDownToNearestFive = (amount) => Math.floor(amount / 5) * 5;
         
-        // Helper function to safely get payment method with fallback
-        // HeyMax API may use either payment_tag, payment_mode, or payment_type
-        const getPaymentMethod = (transaction) => {
-            return transaction.payment_tag || transaction.payment_mode || transaction.payment_type || null;
-        };
-        
         const isBlacklisted = (transaction) => {
             const mccCode = parseInt(transaction.mcc_code, 10);
             if (blacklistMcc.includes(mccCode)) {
@@ -371,11 +365,11 @@
                     return;
                 }
 
-                const paymentMethod = getPaymentMethod(transaction);
+                const paymentTag = transaction.payment_tag;
 
                 if (transaction.original_currency && transaction.original_currency !== 'SGD') {
                     foreignCurrencyBucket += transaction.base_currency_amount;
-                } else if (paymentMethod === 'contactless') {
+                } else if (paymentTag === 'contactless') {
                     contactlessBucket += transaction.base_currency_amount;
                 }
             });
@@ -389,11 +383,11 @@
                     return;
                 }
 
-                const paymentMethod = getPaymentMethod(transaction);
+                const paymentTag = transaction.payment_tag;
 
-                if (paymentMethod === 'contactless') {
+                if (paymentTag === 'contactless') {
                     contactlessBucket += roundDownToNearestFive(transaction.base_currency_amount);
-                } else if (paymentMethod === 'online') {
+                } else if (paymentTag === 'online') {
                     const mccCode = parseInt(transaction.mcc_code, 10);
                     if (ppvShoppingMcc.includes(mccCode) || ppvDiningMcc.includes(mccCode) || ppvEntertainmentMcc.includes(mccCode)) {
                         onlineBucket += roundDownToNearestFive(transaction.base_currency_amount);
