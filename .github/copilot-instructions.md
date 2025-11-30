@@ -55,7 +55,7 @@ For new features, follow this mandatory sequence:
 - Performance and security considerations
 - Technical documentation updates
 
-#### Phase 2b: Code Review & Validation
+#### Phase 3: Code Review & Validation
 **Consult**: `.github/agents/code-reviewer.md`
 
 **Responsibilities**:
