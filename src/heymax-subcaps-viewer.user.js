@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HeyMax SubCaps Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.2.0
+// @version      1.2.1
 // @description  Monitor network requests and display SubCaps calculations for UOB cards on HeyMax
 // @author       Laurence Putra Franslay (@laurenceputra)
 // @source       https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/
@@ -654,6 +654,14 @@
                     <span style="color: ${contactlessColor};">$${results.contactless.toFixed(2)}</span>
                     <span style="color: #333;"> / $${contactlessLimit}</span>
                 </p>
+                <div style="width: 100%; height: 12px; background-color: #e0e0e0; border-radius: 6px; overflow: hidden; margin: 15px 0;">
+                    <div style="
+                        width: ${Math.min((results.contactless / parseFloat(contactlessLimit)) * 100, 100)}%;
+                        height: 100%;
+                        background-color: ${contactlessColor};
+                        transition: width 0.3s ease;
+                    "></div>
+                </div>
                 <p style="color: #666; font-size: 14px; margin-bottom: 0;">
                     Total from contactless payments${cardShortName === 'UOB PPV' ? ' (rounded down to nearest $5)' : ''}
                 </p>
@@ -674,6 +682,14 @@
                         <span style="color: ${foreignCurrencyColor};">$${results.foreignCurrency.toFixed(2)}</span>
                         <span style="color: #333;"> / $1200</span>
                     </p>
+                    <div style="width: 100%; height: 12px; background-color: #e0e0e0; border-radius: 6px; overflow: hidden; margin: 15px 0;">
+                        <div style="
+                            width: ${Math.min((results.foreignCurrency / 1200) * 100, 100)}%;
+                            height: 100%;
+                            background-color: ${foreignCurrencyColor};
+                            transition: width 0.3s ease;
+                        "></div>
+                    </div>
                     <p style="color: #666; font-size: 14px; margin-bottom: 0;">
                         Total from non-SGD transactions
                     </p>
@@ -693,6 +709,14 @@
                         <span style="color: ${onlineColor};">$${results.online.toFixed(2)}</span>
                         <span style="color: #333;"> / $600</span>
                     </p>
+                    <div style="width: 100%; height: 12px; background-color: #e0e0e0; border-radius: 6px; overflow: hidden; margin: 15px 0;">
+                        <div style="
+                            width: ${Math.min((results.online / 600) * 100, 100)}%;
+                            height: 100%;
+                            background-color: ${onlineColor};
+                            transition: width 0.3s ease;
+                        "></div>
+                    </div>
                     <p style="color: #666; font-size: 14px; margin-bottom: 0;">
                         Total from eligible online transactions (rounded down to nearest $5)
                     </p>
