@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HeyMax SubCaps Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.2.1
+// @version      1.2.3
 // @description  Monitor network requests and display SubCaps calculations for UOB cards on HeyMax
 // @author       Laurence Putra Franslay (@laurenceputra)
 // @source       https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/
@@ -316,7 +316,7 @@
     }
 
     // Calculate buckets from transaction data
-    function calculateBuckets(apiResponse, cardShortName = 'UOB PPV') {
+    function calculateBuckets(apiResponse, cardShortName = 'UOB PPV', includeDetails = false) {
         const ppvShoppingMcc = [4816, 5262, 5306, 5309, 5310, 5311, 5331, 5399, 5611, 5621, 5631, 5641, 5651, 5661, 5691, 5699, 5732, 5733, 5734, 5735, 5912, 5942, 5944, 5945, 5946, 5947, 5948, 5949, 5964, 5965, 5966, 5967, 5968, 5969, 5970, 5992, 5999];
         const ppvDiningMcc = [5811, 5812, 5814, 5333, 5411, 5441, 5462, 5499, 8012, 9751];
         const ppvEntertainmentMcc = [7278, 7832, 7841, 7922, 7991, 7996, 7998, 7999];
@@ -336,62 +336,170 @@
         
         const roundDownToNearestFive = (amount) => Math.floor(amount / 5) * 5;
         
-        const isBlacklisted = (transaction) => {
+        const getBlacklistReason = (transaction) => {
             const mccCode = parseInt(transaction.mcc_code, 10);
             if (blacklistMcc.includes(mccCode)) {
-                return true;
+                return `Blacklisted MCC ${mccCode}`;
             }
             
             if (transaction.merchant_name) {
                 for (const prefix of blacklistMerchantPrefixes) {
                     if (transaction.merchant_name.startsWith(prefix)) {
-                        return true;
+                        return `Blacklisted merchant prefix: ${prefix}`;
                     }
                 }
             }
             
-            return false;
+            return null;
+        };
+        
+        const isBlacklisted = (transaction) => {
+            return getBlacklistReason(transaction) !== null;
         };
 
         let contactlessBucket = 0;
         let onlineBucket = 0;
         let foreignCurrencyBucket = 0;
+        
+        // Track transaction details if requested
+        const transactionDetails = includeDetails ? {
+            included: {
+                contactless: [],
+                online: [],
+                foreignCurrency: []
+            },
+            excluded: {
+                blacklisted: [],
+                notEligible: [],
+                wrongPaymentMethod: []
+            }
+        } : null;
 
         if (cardShortName === 'UOB VS') {
             apiResponse.forEach((transactionObj) => {
                 const transaction = transactionObj.transaction;
                 
-                if (isBlacklisted(transaction)) {
+                const blacklistReason = getBlacklistReason(transaction);
+                if (blacklistReason) {
+                    if (includeDetails) {
+                        transactionDetails.excluded.blacklisted.push({
+                            merchant: transaction.merchant_name || 'Unknown',
+                            amount: transaction.base_currency_amount,
+                            reason: blacklistReason,
+                            mcc: transaction.mcc_code,
+                            date: transaction.transaction_date || transaction.date
+                        });
+                    }
                     return;
                 }
 
                 if (transaction.original_currency && transaction.original_currency !== 'SGD') {
                     foreignCurrencyBucket += transaction.base_currency_amount;
+                    if (includeDetails) {
+                        transactionDetails.included.foreignCurrency.push({
+                            merchant: transaction.merchant_name || 'Unknown',
+                            amount: transaction.base_currency_amount,
+                            currency: transaction.original_currency,
+                            date: transaction.transaction_date || transaction.date
+                        });
+                    }
                 } else if (transaction.payment_tag === 'contactless') {
                     contactlessBucket += transaction.base_currency_amount;
-                }
-            });
-
-            return { contactless: contactlessBucket, foreignCurrency: foreignCurrencyBucket };
-        } else {
-            apiResponse.forEach((transactionObj) => {
-                const transaction = transactionObj.transaction;
-                
-                if (isBlacklisted(transaction)) {
-                    return;
-                }
-
-                if (transaction.payment_tag === 'contactless') {
-                    contactlessBucket += roundDownToNearestFive(transaction.base_currency_amount);
-                } else if (transaction.payment_tag === 'online') {
-                    const mccCode = parseInt(transaction.mcc_code, 10);
-                    if (ppvShoppingMcc.includes(mccCode) || ppvDiningMcc.includes(mccCode) || ppvEntertainmentMcc.includes(mccCode)) {
-                        onlineBucket += roundDownToNearestFive(transaction.base_currency_amount);
+                    if (includeDetails) {
+                        transactionDetails.included.contactless.push({
+                            merchant: transaction.merchant_name || 'Unknown',
+                            amount: transaction.base_currency_amount,
+                            date: transaction.transaction_date || transaction.date
+                        });
+                    }
+                } else {
+                    if (includeDetails) {
+                        transactionDetails.excluded.wrongPaymentMethod.push({
+                            merchant: transaction.merchant_name || 'Unknown',
+                            amount: transaction.base_currency_amount,
+                            paymentMethod: transaction.payment_tag || 'unknown',
+                            date: transaction.transaction_date || transaction.date
+                        });
                     }
                 }
             });
 
-            return { contactless: contactlessBucket, online: onlineBucket };
+            const result = { contactless: contactlessBucket, foreignCurrency: foreignCurrencyBucket };
+            if (includeDetails) {
+                result.details = transactionDetails;
+            }
+            return result;
+        } else {
+            apiResponse.forEach((transactionObj) => {
+                const transaction = transactionObj.transaction;
+                
+                const blacklistReason = getBlacklistReason(transaction);
+                if (blacklistReason) {
+                    if (includeDetails) {
+                        transactionDetails.excluded.blacklisted.push({
+                            merchant: transaction.merchant_name || 'Unknown',
+                            amount: transaction.base_currency_amount,
+                            reason: blacklistReason,
+                            mcc: transaction.mcc_code,
+                            date: transaction.transaction_date || transaction.date
+                        });
+                    }
+                    return;
+                }
+
+                if (transaction.payment_tag === 'contactless') {
+                    const roundedAmount = roundDownToNearestFive(transaction.base_currency_amount);
+                    contactlessBucket += roundedAmount;
+                    if (includeDetails) {
+                        transactionDetails.included.contactless.push({
+                            merchant: transaction.merchant_name || 'Unknown',
+                            amount: transaction.base_currency_amount,
+                            roundedAmount: roundedAmount,
+                            date: transaction.transaction_date || transaction.date
+                        });
+                    }
+                } else if (transaction.payment_tag === 'online') {
+                    const mccCode = parseInt(transaction.mcc_code, 10);
+                    if (ppvShoppingMcc.includes(mccCode) || ppvDiningMcc.includes(mccCode) || ppvEntertainmentMcc.includes(mccCode)) {
+                        const roundedAmount = roundDownToNearestFive(transaction.base_currency_amount);
+                        onlineBucket += roundedAmount;
+                        if (includeDetails) {
+                            transactionDetails.included.online.push({
+                                merchant: transaction.merchant_name || 'Unknown',
+                                amount: transaction.base_currency_amount,
+                                roundedAmount: roundedAmount,
+                                mcc: mccCode,
+                                date: transaction.transaction_date || transaction.date
+                            });
+                        }
+                    } else {
+                        if (includeDetails) {
+                            transactionDetails.excluded.notEligible.push({
+                                merchant: transaction.merchant_name || 'Unknown',
+                                amount: transaction.base_currency_amount,
+                                mcc: mccCode,
+                                reason: 'MCC not in eligible categories',
+                                date: transaction.transaction_date || transaction.date
+                            });
+                        }
+                    }
+                } else {
+                    if (includeDetails) {
+                        transactionDetails.excluded.wrongPaymentMethod.push({
+                            merchant: transaction.merchant_name || 'Unknown',
+                            amount: transaction.base_currency_amount,
+                            paymentMethod: transaction.payment_tag || 'unknown',
+                            date: transaction.transaction_date || transaction.date
+                        });
+                    }
+                }
+            });
+
+            const result = { contactless: contactlessBucket, online: onlineBucket };
+            if (includeDetails) {
+                result.details = transactionDetails;
+            }
+            return result;
         }
     }
 
@@ -602,7 +710,7 @@
 
         try {
             const transactions = transactionsData.data;
-            const results = calculateBuckets(transactions, cardShortName);
+            const results = calculateBuckets(transactions, cardShortName, true); // Request details
 
             displayResults(results, transactions.length, cardShortName);
         } catch (error) {
@@ -724,6 +832,29 @@
             `;
         }
 
+        // Add transaction details section if available
+        if (results.details) {
+            html += `
+                <div style="margin-top: 20px; border-top: 2px solid #e0e0e0; padding-top: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3 style="margin: 0; color: #333; font-size: 16px;">Transaction Details</h3>
+                        <button id="toggle-details-btn" style="
+                            padding: 6px 16px;
+                            background-color: #2196F3;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            font-size: 13px;
+                            cursor: pointer;
+                        ">Show Details</button>
+                    </div>
+                    <div id="transaction-details-content" style="display: none; margin-top: 15px;">
+                        ${generateTransactionDetailsHTML(results.details, cardShortName)}
+                    </div>
+                </div>
+            `;
+        }
+
         html += `
             <div style="margin-top: 20px; padding: 15px; background-color: #e3f2fd; border-radius: 8px;">
                 <p style="margin: 0; font-size: 14px; color: #1976D2;">
@@ -733,6 +864,192 @@
         `;
 
         resultsDiv.innerHTML = html;
+        
+        // Add event listener for toggle details button
+        const toggleBtn = document.getElementById('toggle-details-btn');
+        const detailsContent = document.getElementById('transaction-details-content');
+        if (toggleBtn && detailsContent) {
+            toggleBtn.addEventListener('click', function() {
+                if (detailsContent.style.display === 'none') {
+                    detailsContent.style.display = 'block';
+                    toggleBtn.textContent = 'Hide Details';
+                    toggleBtn.style.backgroundColor = '#F57C00';
+                } else {
+                    detailsContent.style.display = 'none';
+                    toggleBtn.textContent = 'Show Details';
+                    toggleBtn.style.backgroundColor = '#2196F3';
+                }
+            });
+        }
+    }
+
+    // Generate HTML for transaction details
+    function generateTransactionDetailsHTML(details, cardShortName) {
+        let html = '';
+        
+        // Included transactions
+        const includedSections = cardShortName === 'UOB VS' 
+            ? [
+                { key: 'contactless', title: 'Contactless Transactions', count: details.included.contactless.length },
+                { key: 'foreignCurrency', title: 'Foreign Currency Transactions', count: details.included.foreignCurrency.length }
+              ]
+            : [
+                { key: 'contactless', title: 'Contactless Transactions', count: details.included.contactless.length },
+                { key: 'online', title: 'Online Transactions', count: details.included.online.length }
+              ];
+        
+        html += '<h4 style="color: #4CAF50; margin-top: 0;">Included Transactions</h4>';
+        
+        includedSections.forEach(section => {
+            if (section.count > 0) {
+                html += `
+                    <div style="margin-bottom: 15px;">
+                        <strong>${section.title} (${section.count})</strong>
+                        <div style="max-height: 200px; overflow-y: auto; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                            <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background-color: #f5f5f5;">
+                                        <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Merchant</th>
+                                        <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">Amount</th>
+                                        ${cardShortName === 'UOB PPV' ? '<th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">Rounded</th>' : ''}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+                
+                details.included[section.key].forEach(txn => {
+                    html += `
+                        <tr>
+                            <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${txn.merchant}</td>
+                            <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">$${txn.amount.toFixed(2)}</td>
+                            ${cardShortName === 'UOB PPV' && txn.roundedAmount !== undefined ? 
+                                `<td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">$${txn.roundedAmount.toFixed(2)}</td>` : 
+                                ''}
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        
+        // Excluded transactions
+        const excludedCount = details.excluded.blacklisted.length + 
+                             details.excluded.notEligible.length + 
+                             details.excluded.wrongPaymentMethod.length;
+        
+        if (excludedCount > 0) {
+            html += '<h4 style="color: #f44336; margin-top: 20px;">Excluded Transactions</h4>';
+            
+            if (details.excluded.blacklisted.length > 0) {
+                html += `
+                    <div style="margin-bottom: 15px;">
+                        <strong>Blacklisted (${details.excluded.blacklisted.length})</strong>
+                        <div style="max-height: 200px; overflow-y: auto; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                            <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background-color: #f5f5f5;">
+                                        <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Merchant</th>
+                                        <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">Amount</th>
+                                        <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+                
+                details.excluded.blacklisted.forEach(txn => {
+                    html += `
+                        <tr>
+                            <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${txn.merchant}</td>
+                            <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">$${txn.amount.toFixed(2)}</td>
+                            <td style="padding: 6px 8px; font-size: 11px; color: #666; border-bottom: 1px solid #eee;">${txn.reason}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (details.excluded.notEligible.length > 0) {
+                html += `
+                    <div style="margin-bottom: 15px;">
+                        <strong>Not Eligible MCC (${details.excluded.notEligible.length})</strong>
+                        <div style="max-height: 200px; overflow-y: auto; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                            <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background-color: #f5f5f5;">
+                                        <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Merchant</th>
+                                        <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">Amount</th>
+                                        <th style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd;">MCC</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+                
+                details.excluded.notEligible.forEach(txn => {
+                    html += `
+                        <tr>
+                            <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${txn.merchant}</td>
+                            <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">$${txn.amount.toFixed(2)}</td>
+                            <td style="padding: 6px 8px; text-align: center; font-size: 11px; border-bottom: 1px solid #eee;">${txn.mcc}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (details.excluded.wrongPaymentMethod.length > 0) {
+                html += `
+                    <div style="margin-bottom: 15px;">
+                        <strong>Wrong Payment Method (${details.excluded.wrongPaymentMethod.length})</strong>
+                        <div style="max-height: 200px; overflow-y: auto; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                            <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background-color: #f5f5f5;">
+                                        <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Merchant</th>
+                                        <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">Amount</th>
+                                        <th style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd;">Method</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+                
+                details.excluded.wrongPaymentMethod.forEach(txn => {
+                    html += `
+                        <tr>
+                            <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${txn.merchant}</td>
+                            <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">$${txn.amount.toFixed(2)}</td>
+                            <td style="padding: 6px 8px; text-align: center; font-size: 11px; border-bottom: 1px solid #eee;">${txn.paymentMethod}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        return html;
     }
 
     // Update button visibility
