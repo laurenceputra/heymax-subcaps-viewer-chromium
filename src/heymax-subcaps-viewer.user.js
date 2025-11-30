@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HeyMax SubCaps Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.6.0
+// @version      1.2.1
 // @description  Monitor network requests and display SubCaps calculations for UOB cards on HeyMax
 // @author       Laurence Putra Franslay (@laurenceputra)
 // @source       https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/
