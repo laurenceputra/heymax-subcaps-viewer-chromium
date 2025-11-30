@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HeyMax SubCaps Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.2.0
+// @version      1.3.0
 // @description  Monitor network requests and display SubCaps calculations for UOB cards on HeyMax
 // @author       Laurence Putra Franslay (@laurenceputra)
 // @source       https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/
@@ -85,6 +85,27 @@
     // PART 2: DATA STORAGE FUNCTIONS
     // ============================================================================
 
+    // Storage write queue to prevent race conditions
+    let storageQueue = Promise.resolve();
+
+    // Thread-safe storage update wrapper
+    function updateCardData(updateFn) {
+        storageQueue = storageQueue.then(() => {
+            try {
+                const cardDataStr = GM_getValue('cardData', '{}');
+                const cardData = JSON.parse(cardDataStr);
+                updateFn(cardData);
+                GM_setValue('cardData', JSON.stringify(cardData));
+            } catch (error) {
+                errorLog('Storage update failed:', error);
+                throw error;
+            }
+        }).catch(error => {
+            errorLog('Storage queue error:', error);
+        });
+        return storageQueue;
+    }
+
     // Extract card ID from URL
     function extractCardId(url) {
         const match = url.match(/\/api\/spend_tracking\/cards\/([a-f0-9]+)\//);
@@ -112,7 +133,7 @@
         return null;
     }
 
-    // Store API data with request type tracking
+    // Store API data with request type tracking (using queue to prevent race conditions)
     function storeApiData(requestType, method, url, status, data, timestamp) {
         const typeEmoji = requestType === 'fetch' ? '🌐' : '📡';
         const typeLabel = requestType === 'fetch' ? 'FETCH' : 'XHR';
@@ -128,54 +149,50 @@
             }
         }
         
-        // Get existing card data
-        const cardDataStr = GM_getValue('cardData', '{}');
-        const cardData = JSON.parse(cardDataStr);
-        
-        debugLog('[HeyMax SubCaps Viewer] Current cardData before update:', cardData);
-        
-        if (dataType && cardId) {
-            // Initialize card object if it doesn't exist
-            if (!cardData[cardId]) {
-                cardData[cardId] = {};
+        // Use storage queue to prevent race conditions
+        updateCardData(cardData => {
+            debugLog('[HeyMax SubCaps Viewer] Current cardData before update:', cardData);
+            
+            if (dataType && cardId) {
+                // Initialize card object if it doesn't exist
+                if (!cardData[cardId]) {
+                    cardData[cardId] = {};
+                }
+                
+                // Store the latest data for this card ID and data type
+                cardData[cardId][dataType] = {
+                    data: data,
+                    timestamp: timestamp,
+                    url: url,
+                    status: status,
+                    requestType: requestType
+                };
+                
+                infoLog(`${typeEmoji} Stored ${dataType} for card ${cardId} via ${typeLabel}`, requestType === 'fetch' ? '#2196F3' : '#FF9800');
+            } else if (dataType === 'card_tracker' && !cardId) {
+                // card_tracker on main listing page (no specific card ID)
+                cardData['card_tracker'] = {
+                    data: data,
+                    timestamp: timestamp,
+                    url: url,
+                    status: status,
+                    requestType: requestType
+                };
+                
+                infoLog(`${typeEmoji} Stored card_tracker (global) via ${typeLabel}`, requestType === 'fetch' ? '#2196F3' : '#FF9800');
             }
             
-            // Store the latest data for this card ID and data type
-            cardData[cardId][dataType] = {
-                data: data,
-                timestamp: timestamp,
-                url: url,
-                status: status,
-                requestType: requestType
-            };
-            
-            infoLog(`${typeEmoji} Stored ${dataType} for card ${cardId} via ${typeLabel}`, requestType === 'fetch' ? '#2196F3' : '#FF9800');
-        } else if (dataType === 'card_tracker' && !cardId) {
-            // card_tracker on main listing page (no specific card ID)
-            cardData['card_tracker'] = {
-                data: data,
-                timestamp: timestamp,
-                url: url,
-                status: status,
-                requestType: requestType
-            };
-            
-            infoLog(`${typeEmoji} Stored card_tracker (global) via ${typeLabel}`, requestType === 'fetch' ? '#2196F3' : '#FF9800');
-        }
-        
-        // Save the updated cardData structure
-        GM_setValue('cardData', JSON.stringify(cardData));
-        
-        if (DEBUG_MODE) {
-            console.groupCollapsed(`%c[HeyMax SubCaps Viewer] ${typeEmoji} Storage Details`, `color: ${requestType === 'fetch' ? '#2196F3' : '#FF9800'};`);
-            console.log('Request Type:', typeLabel);
-            console.log('Method:', method);
-            console.log('URL:', url);
-            console.log('Status:', status);
-            console.log('Timestamp:', timestamp);
-            console.log('Updated cardData:', cardData);
-            console.groupEnd();
-        }
+            if (DEBUG_MODE) {
+                console.groupCollapsed(`%c[HeyMax SubCaps Viewer] ${typeEmoji} Storage Details`, `color: ${requestType === 'fetch' ? '#2196F3' : '#FF9800'};`);
+                console.log('Request Type:', typeLabel);
+                console.log('Method:', method);
+                console.log('URL:', url);
+                console.log('Status:', status);
+                console.log('Timestamp:', timestamp);
+                console.log('Updated cardData:', cardData);
+                console.groupEnd();
+            }
+        });
     }
 
     // ============================================================================
@@ -297,7 +314,7 @@
                         errorLog('Error processing XHR response:', error);
                     }
                 }
-            });
+            }, { once: true });
         }
         
         return originalXHRSend.apply(this, args);
@@ -306,8 +323,158 @@
     console.log('[HeyMax SubCaps Viewer] API interception initialized');
 
     // ============================================================================
+    // PART 4: PATCH MONITORING & AUTO-RECOVERY
+    // ============================================================================
+
+    // Store references to patched functions for monitoring
+    const patchedFetch = targetWindow.fetch;
+    const PatchedXHR = targetWindow.XMLHttpRequest;
+
+    // Monitor patches every 1 second and restore if overwritten
+    setInterval(() => {
+        let patchesRestored = false;
+        
+        if (targetWindow.fetch !== patchedFetch) {
+            console.warn('[HeyMax SubCaps Viewer] Fetch patch overwritten, restoring...');
+            targetWindow.fetch = patchedFetch;
+            patchesRestored = true;
+        }
+        
+        if (targetWindow.XMLHttpRequest !== PatchedXHR) {
+            console.warn('[HeyMax SubCaps Viewer] XHR patch overwritten, restoring...');
+            targetWindow.XMLHttpRequest = PatchedXHR;
+            patchesRestored = true;
+        }
+        
+        if (patchesRestored) {
+            infoLog('Network interception patches restored successfully', '#FF9800');
+        }
+    }, 1000);
+
+    // ============================================================================
     // PART 5: UI COMPONENTS
     // ============================================================================
+
+    // ============================================================================
+    // CONSTANTS: MCC Codes & Configuration
+    // ============================================================================
+
+    // MCC codes for UOB PPV eligible online transactions
+    const MCC_CODES = {
+        PPV_SHOPPING: [4816, 5262, 5306, 5309, 5310, 5311, 5331, 5399, 5611, 5621, 5631, 5641, 5651, 5661, 5691, 5699, 5732, 5733, 5734, 5735, 5912, 5942, 5944, 5945, 5946, 5947, 5948, 5949, 5964, 5965, 5966, 5967, 5968, 5969, 5970, 5992, 5999],
+        PPV_DINING: [5811, 5812, 5814, 5333, 5411, 5441, 5462, 5499, 8012, 9751],
+        PPV_ENTERTAINMENT: [7278, 7832, 7841, 7922, 7991, 7996, 7998, 7999],
+        BLACKLIST: [4829, 4900, 5199, 5960, 5965, 5993, 6012, 6050, 6051, 6211, 6300, 6513, 6529, 6530, 6534, 6540, 7349, 7511, 7523, 7995, 8062, 8211, 8220, 8241, 8244, 8249, 8299, 8398, 8661, 8651, 8699, 8999, 9211, 9222, 9223, 9311, 9402, 9405, 9399]
+    };
+
+    // Blacklisted merchant name prefixes (transit, bill payments, etc.)
+    const BLACKLIST_MERCHANT_PREFIXES = [
+        "AXS", "AMAZE", "AMAZE* TRANSIT", "BANC DE BINARY", "BANCDEBINARY.COM",
+        "EZ LINK PTE LTD (FEVO)", "EZ Link transport", "EZ Link", "EZ-LINK (IMAGINE CARD)",
+        "EZ-Link EZ-Reload (ATU)", "EZLINK", "EzLink", "EZ-LINK", "FlashPay ATU",
+        "MB * MONEYBOOKERS.COM", "NETS VCASHCARD", "OANDA ASIA PAC", "OANDAASIAPA",
+        "PAYPAL * BIZCONSULTA", "PAYPAL * CAPITALROYA", "PAYPAL * OANDAASIAPA",
+        "Saxo Cap Mkts Pte Ltd", "SKR*SKRILL.COM", "SKR*xglobalmarkets.com", "SKYFX.COM",
+        "TRANSIT", "WWW.IGMARKETS.COM.SG", "IPAYMY", "RWS-LEVY", "SMOOVE PAY",
+        "SINGPOST-SAM", "RazerPay", "NORWDS"
+    ];
+
+    // Card-specific configuration (limits, thresholds, rounding rules)
+    const CARD_CONFIGS = {
+        'UOB PPV': {
+            contactlessLimit: 600,
+            onlineLimit: 600,
+            roundToNearest: 5,
+            buckets: ['contactless', 'online']
+        },
+        'UOB VS': {
+            contactlessLimit: 1200,
+            foreignCurrencyLimit: 1200,
+            bonusMilesThreshold: 1000,
+            roundToNearest: 0,
+            buckets: ['contactless', 'foreignCurrency']
+        }
+    };
+
+    // ============================================================================
+    // CALCULATION HELPER FUNCTIONS
+    // ============================================================================
+
+    // Check if transaction should be excluded from subcap calculations
+    function isBlacklistedTransaction(transaction) {
+        const mccCode = parseInt(transaction.mcc_code, 10);
+        
+        // Check MCC blacklist
+        if (MCC_CODES.BLACKLIST.includes(mccCode)) {
+            return true;
+        }
+        
+        // Check merchant name prefixes
+        if (transaction.merchant_name) {
+            for (const prefix of BLACKLIST_MERCHANT_PREFIXES) {
+                if (transaction.merchant_name.startsWith(prefix)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    // Round amount down to nearest multiple of 5
+    function roundDownToNearestFive(amount) {
+        return Math.floor(amount / 5) * 5;
+    }
+
+    // Calculate buckets for UOB PPV card
+    function calculatePPVBuckets(transactions) {
+        let contactlessBucket = 0;
+        let onlineBucket = 0;
+
+        transactions.forEach((transactionObj) => {
+            const transaction = transactionObj.transaction;
+            
+            if (isBlacklistedTransaction(transaction)) {
+                return;
+            }
+
+            if (transaction.payment_tag === 'contactless') {
+                contactlessBucket += roundDownToNearestFive(transaction.base_currency_amount);
+            } else if (transaction.payment_tag === 'online') {
+                const mccCode = parseInt(transaction.mcc_code, 10);
+                if (MCC_CODES.PPV_SHOPPING.includes(mccCode) || 
+                    MCC_CODES.PPV_DINING.includes(mccCode) || 
+                    MCC_CODES.PPV_ENTERTAINMENT.includes(mccCode)) {
+                    onlineBucket += roundDownToNearestFive(transaction.base_currency_amount);
+                }
+            }
+        });
+
+        return { contactless: contactlessBucket, online: onlineBucket };
+    }
+
+    // Calculate buckets for UOB VS card
+    function calculateVSBuckets(transactions) {
+        let contactlessBucket = 0;
+        let foreignCurrencyBucket = 0;
+
+        transactions.forEach((transactionObj) => {
+            const transaction = transactionObj.transaction;
+            
+            if (isBlacklistedTransaction(transaction)) {
+                return;
+            }
+
+            // Foreign currency takes priority (not counted in contactless)
+            if (transaction.original_currency && transaction.original_currency !== 'SGD') {
+                foreignCurrencyBucket += transaction.base_currency_amount;
+            } else if (transaction.payment_tag === 'contactless') {
+                contactlessBucket += transaction.base_currency_amount;
+            }
+        });
+
+        return { contactless: contactlessBucket, foreignCurrency: foreignCurrencyBucket };
+    }
 
     // Extract card ID from URL
     function extractCardIdFromUrl() {
@@ -315,120 +482,53 @@
         return match ? match[1] : null;
     }
 
-    // Calculate buckets from transaction data
+    // Calculate buckets from transaction data (router function)
     function calculateBuckets(apiResponse, cardShortName = 'UOB PPV') {
-        const ppvShoppingMcc = [4816, 5262, 5306, 5309, 5310, 5311, 5331, 5399, 5611, 5621, 5631, 5641, 5651, 5661, 5691, 5699, 5732, 5733, 5734, 5735, 5912, 5942, 5944, 5945, 5946, 5947, 5948, 5949, 5964, 5965, 5966, 5967, 5968, 5969, 5970, 5992, 5999];
-        const ppvDiningMcc = [5811, 5812, 5814, 5333, 5411, 5441, 5462, 5499, 8012, 9751];
-        const ppvEntertainmentMcc = [7278, 7832, 7841, 7922, 7991, 7996, 7998, 7999];
-        
-        const blacklistMcc = [4829, 4900, 5199, 5960, 5965, 5993, 6012, 6050, 6051, 6211, 6300, 6513, 6529, 6530, 6534, 6540, 7349, 7511, 7523, 7995, 8062, 8211, 8220, 8241, 8244, 8249, 8299, 8398, 8661, 8651, 8699, 8999, 9211, 9222, 9223, 9311, 9402, 9405, 9399];
-        
-        const blacklistMerchantPrefixes = [
-            "AXS", "AMAZE", "AMAZE* TRANSIT", "BANC DE BINARY", "BANCDEBINARY.COM",
-            "EZ LINK PTE LTD (FEVO)", "EZ Link transport", "EZ Link", "EZ-LINK (IMAGINE CARD)",
-            "EZ-Link EZ-Reload (ATU)", "EZLINK", "EzLink", "EZ-LINK", "FlashPay ATU",
-            "MB * MONEYBOOKERS.COM", "NETS VCASHCARD", "OANDA ASIA PAC", "OANDAASIAPA",
-            "PAYPAL * BIZCONSULTA", "PAYPAL * CAPITALROYA", "PAYPAL * OANDAASIAPA",
-            "Saxo Cap Mkts Pte Ltd", "SKR*SKRILL.COM", "SKR*xglobalmarkets.com", "SKYFX.COM",
-            "TRANSIT", "WWW.IGMARKETS.COM.SG", "IPAYMY", "RWS-LEVY", "SMOOVE PAY",
-            "SINGPOST-SAM", "RazerPay", "NORWDS"
-        ];
-        
-        const roundDownToNearestFive = (amount) => Math.floor(amount / 5) * 5;
-        
-        const isBlacklisted = (transaction) => {
-            const mccCode = parseInt(transaction.mcc_code, 10);
-            if (blacklistMcc.includes(mccCode)) {
-                return true;
-            }
-            
-            if (transaction.merchant_name) {
-                for (const prefix of blacklistMerchantPrefixes) {
-                    if (transaction.merchant_name.startsWith(prefix)) {
-                        return true;
-                    }
-                }
-            }
-            
-            return false;
-        };
-
-        let contactlessBucket = 0;
-        let onlineBucket = 0;
-        let foreignCurrencyBucket = 0;
-
         if (cardShortName === 'UOB VS') {
-            apiResponse.forEach((transactionObj) => {
-                const transaction = transactionObj.transaction;
-                
-                if (isBlacklisted(transaction)) {
-                    return;
-                }
-
-                if (transaction.original_currency && transaction.original_currency !== 'SGD') {
-                    foreignCurrencyBucket += transaction.base_currency_amount;
-                } else if (transaction.payment_tag === 'contactless') {
-                    contactlessBucket += transaction.base_currency_amount;
-                }
-            });
-
-            return { contactless: contactlessBucket, foreignCurrency: foreignCurrencyBucket };
-        } else {
-            apiResponse.forEach((transactionObj) => {
-                const transaction = transactionObj.transaction;
-                
-                if (isBlacklisted(transaction)) {
-                    return;
-                }
-
-                if (transaction.payment_tag === 'contactless') {
-                    contactlessBucket += roundDownToNearestFive(transaction.base_currency_amount);
-                } else if (transaction.payment_tag === 'online') {
-                    const mccCode = parseInt(transaction.mcc_code, 10);
-                    if (ppvShoppingMcc.includes(mccCode) || ppvDiningMcc.includes(mccCode) || ppvEntertainmentMcc.includes(mccCode)) {
-                        onlineBucket += roundDownToNearestFive(transaction.base_currency_amount);
-                    }
-                }
-            });
-
-            return { contactless: contactlessBucket, online: onlineBucket };
+            return calculateVSBuckets(apiResponse);
         }
+        return calculatePPVBuckets(apiResponse);
     }
 
     // Check if button should be visible
     function shouldShowButton(cardId) {
-        const cardDataStr = GM_getValue('cardData', '{}');
-        const cardData = JSON.parse(cardDataStr);
+        try {
+            const cardDataStr = GM_getValue('cardData', '{}');
+            const cardData = JSON.parse(cardDataStr);
 
-        debugLog('[HeyMax SubCaps Viewer] Checking visibility - cardData:', cardData);
-        debugLog('[HeyMax SubCaps Viewer] Checking visibility - cardId:', cardId);
+            debugLog('[HeyMax SubCaps Viewer] Checking visibility - cardData:', cardData);
+            debugLog('[HeyMax SubCaps Viewer] Checking visibility - cardId:', cardId);
 
-        if (!cardData || !cardId) {
-            debugLog('[HeyMax SubCaps Viewer] No cardData or cardId, hiding button');
+            if (!cardData || !cardId) {
+                debugLog('[HeyMax SubCaps Viewer] No cardData or cardId, hiding button');
+                return false;
+            }
+
+            const cardInfo = cardData[cardId];
+            debugLog('[HeyMax SubCaps Viewer] Card info exists:', !!cardInfo);
+
+            if (!cardInfo || !cardInfo.card_tracker) {
+                debugLog('[HeyMax SubCaps Viewer] No card info or card_tracker, hiding button');
+                return false;
+            }
+
+            const cardTrackerData = cardInfo.card_tracker.data;
+            debugLog('[HeyMax SubCaps Viewer] Card tracker data exists:', !!cardTrackerData);
+
+            if (!cardTrackerData || !cardTrackerData.card) {
+                debugLog('[HeyMax SubCaps Viewer] No card tracker data or card object, hiding button');
+                return false;
+            }
+
+            const shortName = cardTrackerData.card.short_name;
+            debugLog('[HeyMax SubCaps Viewer] Card short_name:', shortName);
+            const isSupportedCard = shortName === 'UOB PPV' || shortName === 'UOB VS';
+            debugLog('[HeyMax SubCaps Viewer] Is supported card:', isSupportedCard);
+            return isSupportedCard;
+        } catch (error) {
+            errorLog('Error in shouldShowButton:', error);
             return false;
         }
-
-        const cardInfo = cardData[cardId];
-        debugLog('[HeyMax SubCaps Viewer] Card info exists:', !!cardInfo);
-
-        if (!cardInfo || !cardInfo.card_tracker) {
-            debugLog('[HeyMax SubCaps Viewer] No card info or card_tracker, hiding button');
-            return false;
-        }
-
-        const cardTrackerData = cardInfo.card_tracker.data;
-        debugLog('[HeyMax SubCaps Viewer] Card tracker data exists:', !!cardTrackerData);
-
-        if (!cardTrackerData || !cardTrackerData.card) {
-            debugLog('[HeyMax SubCaps Viewer] No card tracker data or card object, hiding button');
-            return false;
-        }
-
-        const shortName = cardTrackerData.card.short_name;
-        debugLog('[HeyMax SubCaps Viewer] Card short_name:', shortName);
-        const isSupportedCard = shortName === 'UOB PPV' || shortName === 'UOB VS';
-        debugLog('[HeyMax SubCaps Viewer] Is supported card:', isSupportedCard);
-        return isSupportedCard;
     }
 
     // Create the SubCaps button
@@ -624,22 +724,26 @@
         const resultsDiv = document.getElementById('heymax-subcaps-results');
         if (!resultsDiv) return;
 
+        const config = CARD_CONFIGS[cardShortName];
+        if (!config) {
+            errorLog('Unknown card type:', cardShortName);
+            return;
+        }
+
         // Helper function to determine color based on value and card type
         function getValueColor(value, bucketType, cardType) {
+            const cardConfig = CARD_CONFIGS[cardType];
             if (cardType === 'UOB VS') {
-                // For UOB VS: yellow < 1000, green 1000-1200, red > 1200
-                if (value < 1000) return '#FFC107'; // Yellow
-                if (value <= 1200) return '#4CAF50'; // Green
+                if (value < cardConfig.bonusMilesThreshold) return '#FFC107'; // Yellow
+                if (value <= cardConfig[bucketType + 'Limit']) return '#4CAF50'; // Green
                 return '#f44336'; // Red
             } else {
-                // For UOB PPV: green < 600, red >= 600
-                if (value < 600) return '#4CAF50'; // Green
+                if (value < cardConfig[bucketType + 'Limit']) return '#4CAF50'; // Green
                 return '#f44336'; // Red
             }
         }
 
         const contactlessColor = getValueColor(results.contactless, 'contactless', cardShortName);
-        const contactlessLimit = cardShortName === 'UOB VS' ? '1200' : '600';
 
         let html = `
             <div style="margin-bottom: 20px;">
@@ -652,14 +756,14 @@
                 <h3 style="margin-top: 0; color: #333; font-size: 18px;">Contactless Bucket</h3>
                 <p style="font-size: 32px; font-weight: bold; margin: 10px 0;">
                     <span style="color: ${contactlessColor};">$${results.contactless.toFixed(2)}</span>
-                    <span style="color: #333;"> / $${contactlessLimit}</span>
+                    <span style="color: #333;"> / $${config.contactlessLimit}</span>
                 </p>
                 <p style="color: #666; font-size: 14px; margin-bottom: 0;">
-                    Total from contactless payments${cardShortName === 'UOB PPV' ? ' (rounded down to nearest $5)' : ''}
+                    Total from contactless payments${config.roundToNearest > 0 ? ` (rounded down to nearest $${config.roundToNearest})` : ''}
                 </p>
-                ${cardShortName === 'UOB VS' && results.contactless < 1000 ? `
+                ${cardShortName === 'UOB VS' && results.contactless < config.bonusMilesThreshold ? `
                 <p style="color: #F57C00; font-size: 14px; margin-top: 10px; margin-bottom: 0; font-weight: 500;">
-                    To start earning bonus miles, you must spend at least $1,000 in this category.
+                    To start earning bonus miles, you must spend at least $${config.bonusMilesThreshold.toLocaleString()} in this category.
                 </p>
                 ` : ''}
             </div>
@@ -672,14 +776,14 @@
                     <h3 style="margin-top: 0; color: #333; font-size: 18px;">Foreign Currency Bucket</h3>
                     <p style="font-size: 32px; font-weight: bold; margin: 10px 0;">
                         <span style="color: ${foreignCurrencyColor};">$${results.foreignCurrency.toFixed(2)}</span>
-                        <span style="color: #333;"> / $1200</span>
+                        <span style="color: #333;"> / $${config.foreignCurrencyLimit}</span>
                     </p>
                     <p style="color: #666; font-size: 14px; margin-bottom: 0;">
                         Total from non-SGD transactions
                     </p>
-                    ${results.foreignCurrency < 1000 ? `
+                    ${results.foreignCurrency < config.bonusMilesThreshold ? `
                     <p style="color: #F57C00; font-size: 14px; margin-top: 10px; margin-bottom: 0; font-weight: 500;">
-                        To start earning bonus miles, you must spend at least $1,000 in this category.
+                        To start earning bonus miles, you must spend at least $${config.bonusMilesThreshold.toLocaleString()} in this category.
                     </p>
                     ` : ''}
                 </div>
@@ -691,10 +795,10 @@
                     <h3 style="margin-top: 0; color: #333; font-size: 18px;">Online Bucket</h3>
                     <p style="font-size: 32px; font-weight: bold; margin: 10px 0;">
                         <span style="color: ${onlineColor};">$${results.online.toFixed(2)}</span>
-                        <span style="color: #333;"> / $600</span>
+                        <span style="color: #333;"> / $${config.onlineLimit}</span>
                     </p>
                     <p style="color: #666; font-size: 14px; margin-bottom: 0;">
-                        Total from eligible online transactions (rounded down to nearest $5)
+                        Total from eligible online transactions${config.roundToNearest > 0 ? ` (rounded down to nearest $${config.roundToNearest})` : ''}
                     </p>
                 </div>
             `;
@@ -713,19 +817,26 @@
 
     // Update button visibility
     function updateButtonVisibility() {
-        const button = document.getElementById('heymax-subcaps-button');
-        if (!button) return;
+        try {
+            const button = document.getElementById('heymax-subcaps-button');
+            if (!button) {
+                debugLog('[HeyMax SubCaps Viewer] Button element not found in DOM');
+                return;
+            }
 
-        const cardId = extractCardIdFromUrl();
-        debugLog('[HeyMax SubCaps Viewer] Extracted card ID:', cardId);
+            const cardId = extractCardIdFromUrl();
+            debugLog('[HeyMax SubCaps Viewer] Extracted card ID:', cardId);
 
-        if (cardId) {
-            const shouldShow = shouldShowButton(cardId);
-            debugLog(`[HeyMax SubCaps Viewer] Button visibility for card ${cardId}: ${shouldShow}`);
-            button.style.display = shouldShow ? 'block' : 'none';
-        } else {
-            button.style.display = 'none';
-            debugLog('[HeyMax SubCaps Viewer] No card ID in URL, button hidden');
+            if (cardId) {
+                const shouldShow = shouldShowButton(cardId);
+                debugLog(`[HeyMax SubCaps Viewer] Button visibility for card ${cardId}: ${shouldShow}`);
+                button.style.display = shouldShow ? 'block' : 'none';
+            } else {
+                button.style.display = 'none';
+                debugLog('[HeyMax SubCaps Viewer] No card ID in URL, button hidden');
+            }
+        } catch (error) {
+            errorLog('Error updating button visibility:', error);
         }
     }
 
