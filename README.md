@@ -13,45 +13,6 @@ If you're using UOB PPV (Preferred Platinum Visa) or UOB VS (Visa Signature) car
 ✅ **Always Working**: The script keeps running reliably in the background  
 ✅ **Remembers Your Data**: Your subcap information is saved locally on your device and stays completely private—no waiting for it to reload each time
 
-## 📱 Use Edge Mobile Instead of the HeyMax App
-
-**Want better subcap tracking on mobile?** The HeyMax mobile site offers similar features to the app, and using Edge Mobile lets you install browser extensions like this script—giving mile chasers the subcap tracking they need that the official app doesn't provide!
-
-### Why Edge Mobile?
-- **Tampermonkey Support**: Unlike most mobile browsers, Edge Mobile supports browser extensions including Tampermonkey
-- **Same Features**: Access all HeyMax.ai website features directly in your browser
-- **Plus Subcap Tracking**: This script adds subcap tracking functionality that even the official app lacks
-- **Privacy**: All calculations happen locally on your device
-
-**Note**: While Firefox Mobile and Kiwi Browser support Tampermonkey, the HeyMax.ai website doesn't work on them—it redirects users to download the app instead of loading the web interface.
-
-### Add HeyMax to Your Homescreen
-For quick access like a native app, add HeyMax to your homescreen:
-
-**On iOS (Edge Mobile):**
-1. Open https://heymax.ai in Edge
-2. Tap the **Share** button (square with arrow)
-3. Scroll down and tap **Add to Home Screen**
-4. Name it "HeyMax" and tap **Add**
-
-**On Android (Edge Mobile):**
-1. Open https://heymax.ai in Edge
-2. Tap the **menu** (three dots)
-3. Tap **Add to phone** or **Add to Home screen**
-4. Confirm by tapping **Add**
-
-Now you can launch HeyMax directly from your homescreen—just like an app!
-
-## Supported Cards
-
-- **UOB Preferred Platinum Visa (PPV)** — both buckets have a $600 limit and transactions are rounded down to the nearest $5:
-  - Tracks contactless payments
-  - Tracks eligible online transactions across shopping, dining, and entertainment MCCs
-
-- **UOB Visa Signature (VS)** — both buckets have a $1,200 limit and require spending at least $1,000 to earn bonus miles:
-  - Tracks contactless payments (excluding foreign currency)
-  - Tracks foreign currency transactions in any currency other than SGD
-
 ## Screenshots
 
 The overlay uses color coding to help you understand your status instantly:
@@ -69,20 +30,7 @@ The overlay uses color coding to help you understand your status instantly:
 
 ## Installation
 
-### Edge Mobile (Recommended for Mobile Users)
-
-**Best option for using HeyMax on your phone without the app:**
-
-1. Install **Microsoft Edge** browser on your mobile device ([iOS](https://apps.apple.com/app/microsoft-edge/id1288723196) / [Android](https://play.google.com/store/apps/details?id=com.microsoft.emmx))
-2. Open Edge, tap **≡** (menu) → **Extensions** → **Get extensions from store**
-3. Search for **Tampermonkey** and install it
-4. Open the [raw script file](https://github.com/laurenceputra/heymax-subcaps-viewer/raw/refs/heads/main/src/heymax-subcaps-viewer.user.js) in your browser
-5. Tampermonkey will automatically detect the userscript and prompt you to install it
-6. Click **Install** to add the script
-7. Navigate to https://heymax.ai/cards/your-cards/ and view your card details
-8. Click the green "Subcaps" button that appears in the bottom-right corner
-
-### Desktop Browsers
+### Desktop Browsers (Recommended)
 
 **Works on Chrome, Firefox, Safari, Opera, and Edge:**
 
@@ -97,22 +45,68 @@ The overlay uses color coding to help you understand your status instantly:
 5. Navigate to https://heymax.ai/cards/your-cards/ and view your card details
 6. Click the green "Subcaps" button that appears in the bottom-right corner
 
-## Usage
+### Edge Mobile (Mobile Alternative)
 
-Once installed, the script works automatically in the background. Just browse HeyMax normally and your subcap data will be tracked.
+**Prefer using HeyMax on your phone instead of on the desktop?** Edge Mobile is the only mobile browser that supports Tampermonkey extensions AND works with HeyMax.ai (Firefox Mobile and Kiwi Browser redirect to app download instead of loading the website).
 
-### Viewing SubCaps Data
+**Why use Edge Mobile with this script?**
+- Get subcap tracking on mobile (not available in the official HeyMax app)
+- Access all HeyMax.ai website features in your browser
+- All calculations stay private on your device
 
-1. Go to your card detail page on HeyMax (e.g., https://heymax.ai/cards/your-cards/[card-id])
-2. Wait for the page to load your transaction data
-3. Once data is loaded, a green "Subcaps" button will appear in the bottom-right corner
-4. Click the button to view your SubCaps analysis
+**Installation steps:**
+
+1. Install **Microsoft Edge** browser on your mobile device ([iOS](https://apps.apple.com/app/microsoft-edge/id1288723196) / [Android](https://play.google.com/store/apps/details?id=com.microsoft.emmx))
+2. Open Edge, tap **≡** (menu) → **Extensions** → **Get extensions from store**
+3. Search for **Tampermonkey** and install it
+4. Open the [raw script file](https://github.com/laurenceputra/heymax-subcaps-viewer/raw/refs/heads/main/src/heymax-subcaps-viewer.user.js) in your browser
+5. Tampermonkey will automatically detect the userscript and prompt you to install it
+6. Click **Install** to add the script
+7. Navigate to https://heymax.ai/cards/your-cards/ and view your card details
+8. Click the green "Subcaps" button that appears in the bottom-right corner
+
+## Post-Installation Setup
+
+### Add HeyMax to Your Homescreen (Mobile Only)
+
+For quick access like a native app, add HeyMax to your homescreen:
+
+**On iOS (Edge Mobile):**
+1. Open https://heymax.ai in Edge
+2. Tap the **Share** button (square with arrow)
+3. Scroll down and tap **Add to Home Screen**
+4. Name it "HeyMax" and tap **Add**
+
+**On Android (Edge Mobile):**
+1. Open https://heymax.ai in Edge
+2. Tap the **menu** (three dots)
+3. Tap **Add to phone** or **Add to Home screen**
+4. Confirm by tapping **Add**
+
+Now you can launch HeyMax directly from your homescreen—just like an app!
+
+### What's Next?
+
+Once installed, the script works automatically in the background. Here's how to check your subcaps:
+
+1. Open HeyMax and go to your card detail page (e.g., https://heymax.ai/cards/your-cards/[card-id])
+2. Wait for the page to load your transaction data (a few seconds)
+3. Look for the green "Subcaps" button in the bottom-right corner
+4. Click the button to view your subcap analysis with color-coded progress bars
+
+Your subcap data will be tracked automatically as you browse HeyMax. Just visit your card page and click the "Subcaps" button anytime you want to check your progress!
+
+## Supported Cards
+
+- **UOB Preferred Platinum Visa (PPV)** — both buckets have a $600 limit and transactions are rounded down to the nearest $5:
+  - Tracks contactless payments
+  - Tracks eligible online transactions across shopping, dining, and entertainment MCCs
+
+- **UOB Visa Signature (VS)** — both buckets have a $1,200 limit and require spending at least $1,000 to earn bonus miles:
+  - Tracks contactless payments (excluding foreign currency)
+  - Tracks foreign currency transactions in any currency other than SGD
 
 ## FAQ
-
-### Why Edge Mobile instead of the HeyMax app?
-
-Edge Mobile with this script gives you everything the HeyMax website offers, plus subcap tracking that the official app doesn't provide. It's a great alternative if you prefer browser-based access or want the additional subcap visibility.
 
 ### Will this work with other credit cards?
 
