@@ -412,12 +412,6 @@
     // PART 5: UI COMPONENTS
     // ============================================================================
 
-    // Extract card ID from URL
-    function extractCardIdFromUrl() {
-        const match = window.location.pathname.match(/\/cards\/your-cards\/([a-f0-9]+)/);
-        return match ? match[1] : null;
-    }
-
     // Calculate buckets from transaction data
     function calculateBuckets(apiResponse, cardShortName = 'UOB PPV', includeDetails = false) {
         // Use Sets for O(1) lookup performance instead of arrays
@@ -563,7 +557,23 @@
         let onlineBucket = 0;
 
         apiResponse.forEach((transactionObj) => {
+            // Defensive input validation
+            if (!transactionObj || typeof transactionObj !== 'object') {
+                debugLog('[HeyMax SubCaps Viewer] Invalid transaction object, skipping:', transactionObj);
+                return;
+            }
+            
             const transaction = transactionObj.transaction;
+            
+            if (!transaction || typeof transaction !== 'object') {
+                debugLog('[HeyMax SubCaps Viewer] Missing transaction property, skipping:', transactionObj);
+                return;
+            }
+            
+            if (typeof transaction.base_currency_amount !== 'number' || isNaN(transaction.base_currency_amount)) {
+                debugLog('[HeyMax SubCaps Viewer] Invalid base_currency_amount, skipping:', transaction);
+                return;
+            }
             
             const blacklistReason = getBlacklistReason(transaction);
             if (blacklistReason) {
@@ -591,8 +601,8 @@
                     });
                 }
             } else if (transaction.payment_tag === 'online') {
-                const mccCode = parseInt(transaction.mcc_code, 10);
-                if (isEligibleForPPVOnline(mccCode)) {
+                const mccCode = transaction.mcc_code ? parseInt(transaction.mcc_code, 10) : NaN;
+                if (!isNaN(mccCode) && isEligibleForPPVOnline(mccCode)) {
                     const roundedAmount = roundDownToNearestFive(transaction.base_currency_amount);
                     onlineBucket += roundedAmount;
                     if (includeDetails) {
@@ -609,9 +619,9 @@
                         transactionDetails.excluded.notEligible.push({
                             merchant: transaction.merchant_name || 'Unknown',
                             amount: transaction.base_currency_amount,
-                            mcc: mccCode,
+                            mcc: isNaN(mccCode) ? 'N/A' : mccCode,
                             reason: 'MCC not in eligible categories',
-                            date: transaction.transaction_date || transaction.date
+                            date: transaction.transaction_date || transaction.date || 'Unknown'
                         });
                     }
                 }
@@ -821,7 +831,7 @@
         resultsDiv.innerHTML = '<p style="text-align: center; color: #666;">Loading data...</p>';
         overlay.style.display = 'flex';
 
-        const cardId = extractCardIdFromUrl();
+        const cardId = extractCardId(window.location.pathname);
         const cardDataStr = GM_getValue('cardData', '{}');
         const cardData = JSON.parse(cardDataStr);
 
@@ -1180,7 +1190,7 @@
         const button = document.getElementById('heymax-subcaps-button');
         if (!button) return;
 
-        const cardId = extractCardIdFromUrl();
+        const cardId = extractCardId(window.location.pathname);
         debugLog('[HeyMax SubCaps Viewer] Extracted card ID:', cardId);
 
         if (cardId) {
