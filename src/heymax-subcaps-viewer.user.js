@@ -452,32 +452,6 @@
             return null;
         };
         
-        // Helper function to track blacklisted transactions
-        const trackBlacklistedTransaction = (transaction, blacklistReason, transactionDetails) => {
-            transactionDetails.excluded.blacklisted.push({
-                merchant: transaction.merchant_name || 'Unknown',
-                amount: transaction.base_currency_amount,
-                reason: blacklistReason,
-                mcc: transaction.mcc_code,
-                date: transaction.transaction_date || transaction.date
-            });
-        };
-        
-        // Helper function to track wrong payment method transactions
-        const trackWrongPaymentMethod = (transaction, transactionDetails) => {
-            transactionDetails.excluded.wrongPaymentMethod.push({
-                merchant: transaction.merchant_name || 'Unknown',
-                amount: transaction.base_currency_amount,
-                paymentMethod: transaction.payment_tag || 'unknown',
-                date: transaction.transaction_date || transaction.date
-            });
-        };
-
-        let contactlessBucket = 0;
-        let onlineBucket = 0;
-        let foreignCurrencyBucket = 0;
-        
-        // Track transaction details if requested
         const transactionDetails = includeDetails ? {
             included: {
                 contactless: [],
@@ -491,110 +465,152 @@
             }
         } : null;
 
+        const isEligibleForPPVOnline = (mccCode) => {
+            return ppvShoppingMcc.includes(mccCode) || ppvDiningMcc.includes(mccCode) || ppvEntertainmentMcc.includes(mccCode);
+        };
+
         if (cardShortName === 'UOB VS') {
-            apiResponse.forEach((transactionObj) => {
-                const transaction = transactionObj.transaction;
-                
-                const blacklistReason = getBlacklistReason(transaction);
-                if (blacklistReason) {
-                    if (includeDetails) {
-                        trackBlacklistedTransaction(transaction, blacklistReason, transactionDetails);
-                    }
-                    return;
-                }
-
-                if (transaction.original_currency && transaction.original_currency !== 'SGD') {
-                    foreignCurrencyBucket += transaction.base_currency_amount;
-                    if (includeDetails) {
-                        transactionDetails.included.foreignCurrency.push({
-                            merchant: transaction.merchant_name || 'Unknown',
-                            amount: transaction.base_currency_amount,
-                            currency: transaction.original_currency,
-                            date: transaction.transaction_date || transaction.date
-                        });
-                    }
-                } else if (transaction.payment_tag === 'contactless') {
-                    contactlessBucket += transaction.base_currency_amount;
-                    if (includeDetails) {
-                        transactionDetails.included.contactless.push({
-                            merchant: transaction.merchant_name || 'Unknown',
-                            amount: transaction.base_currency_amount,
-                            date: transaction.transaction_date || transaction.date
-                        });
-                    }
-                } else {
-                    if (includeDetails) {
-                        trackWrongPaymentMethod(transaction, transactionDetails);
-                    }
-                }
-            });
-
-            const result = { contactless: contactlessBucket, foreignCurrency: foreignCurrencyBucket };
-            if (includeDetails) {
-                result.details = transactionDetails;
-            }
-            return result;
+            return calculateVSBuckets(apiResponse, getBlacklistReason, transactionDetails, includeDetails);
         } else {
-            apiResponse.forEach((transactionObj) => {
-                const transaction = transactionObj.transaction;
-                
-                const blacklistReason = getBlacklistReason(transaction);
-                if (blacklistReason) {
-                    if (includeDetails) {
-                        trackBlacklistedTransaction(transaction, blacklistReason, transactionDetails);
-                    }
-                    return;
-                }
+            return calculatePPVBuckets(apiResponse, getBlacklistReason, roundDownToNearestFive, isEligibleForPPVOnline, transactionDetails, includeDetails);
+        }
+    }
 
-                if (transaction.payment_tag === 'contactless') {
+    // Calculate UOB VS buckets
+    function calculateVSBuckets(apiResponse, getBlacklistReason, transactionDetails, includeDetails) {
+        let contactlessBucket = 0;
+        let foreignCurrencyBucket = 0;
+
+        apiResponse.forEach((transactionObj) => {
+            const transaction = transactionObj.transaction;
+            
+            const blacklistReason = getBlacklistReason(transaction);
+            if (blacklistReason) {
+                if (includeDetails) {
+                    transactionDetails.excluded.blacklisted.push({
+                        merchant: transaction.merchant_name || 'Unknown',
+                        amount: transaction.base_currency_amount,
+                        reason: blacklistReason,
+                        mcc: transaction.mcc_code,
+                        date: transaction.transaction_date || transaction.date
+                    });
+                }
+                return;
+            }
+
+            if (transaction.original_currency && transaction.original_currency !== 'SGD') {
+                foreignCurrencyBucket += transaction.base_currency_amount;
+                if (includeDetails) {
+                    transactionDetails.included.foreignCurrency.push({
+                        merchant: transaction.merchant_name || 'Unknown',
+                        amount: transaction.base_currency_amount,
+                        currency: transaction.original_currency,
+                        date: transaction.transaction_date || transaction.date
+                    });
+                }
+            } else if (transaction.payment_tag === 'contactless') {
+                contactlessBucket += transaction.base_currency_amount;
+                if (includeDetails) {
+                    transactionDetails.included.contactless.push({
+                        merchant: transaction.merchant_name || 'Unknown',
+                        amount: transaction.base_currency_amount,
+                        date: transaction.transaction_date || transaction.date
+                    });
+                }
+            } else {
+                if (includeDetails) {
+                    transactionDetails.excluded.wrongPaymentMethod.push({
+                        merchant: transaction.merchant_name || 'Unknown',
+                        amount: transaction.base_currency_amount,
+                        paymentMethod: transaction.payment_tag || 'unknown',
+                        date: transaction.transaction_date || transaction.date
+                    });
+                }
+            }
+        });
+
+        const result = { contactless: contactlessBucket, foreignCurrency: foreignCurrencyBucket };
+        if (includeDetails) {
+            result.details = transactionDetails;
+        }
+        return result;
+    }
+
+    // Calculate UOB PPV buckets
+    function calculatePPVBuckets(apiResponse, getBlacklistReason, roundDownToNearestFive, isEligibleForPPVOnline, transactionDetails, includeDetails) {
+        let contactlessBucket = 0;
+        let onlineBucket = 0;
+
+        apiResponse.forEach((transactionObj) => {
+            const transaction = transactionObj.transaction;
+            
+            const blacklistReason = getBlacklistReason(transaction);
+            if (blacklistReason) {
+                if (includeDetails) {
+                    transactionDetails.excluded.blacklisted.push({
+                        merchant: transaction.merchant_name || 'Unknown',
+                        amount: transaction.base_currency_amount,
+                        reason: blacklistReason,
+                        mcc: transaction.mcc_code,
+                        date: transaction.transaction_date || transaction.date
+                    });
+                }
+                return;
+            }
+
+            if (transaction.payment_tag === 'contactless') {
+                const roundedAmount = roundDownToNearestFive(transaction.base_currency_amount);
+                contactlessBucket += roundedAmount;
+                if (includeDetails) {
+                    transactionDetails.included.contactless.push({
+                        merchant: transaction.merchant_name || 'Unknown',
+                        amount: transaction.base_currency_amount,
+                        roundedAmount: roundedAmount,
+                        date: transaction.transaction_date || transaction.date
+                    });
+                }
+            } else if (transaction.payment_tag === 'online') {
+                const mccCode = parseInt(transaction.mcc_code, 10);
+                if (isEligibleForPPVOnline(mccCode)) {
                     const roundedAmount = roundDownToNearestFive(transaction.base_currency_amount);
-                    contactlessBucket += roundedAmount;
+                    onlineBucket += roundedAmount;
                     if (includeDetails) {
-                        transactionDetails.included.contactless.push({
+                        transactionDetails.included.online.push({
                             merchant: transaction.merchant_name || 'Unknown',
                             amount: transaction.base_currency_amount,
                             roundedAmount: roundedAmount,
+                            mcc: mccCode,
                             date: transaction.transaction_date || transaction.date
                         });
                     }
-                } else if (transaction.payment_tag === 'online') {
-                    const mccCode = parseInt(transaction.mcc_code, 10);
-                    if (ppvShoppingMcc.includes(mccCode) || ppvDiningMcc.includes(mccCode) || ppvEntertainmentMcc.includes(mccCode)) {
-                        const roundedAmount = roundDownToNearestFive(transaction.base_currency_amount);
-                        onlineBucket += roundedAmount;
-                        if (includeDetails) {
-                            transactionDetails.included.online.push({
-                                merchant: transaction.merchant_name || 'Unknown',
-                                amount: transaction.base_currency_amount,
-                                roundedAmount: roundedAmount,
-                                mcc: mccCode,
-                                date: transaction.transaction_date || transaction.date
-                            });
-                        }
-                    } else {
-                        if (includeDetails) {
-                            transactionDetails.excluded.notEligible.push({
-                                merchant: transaction.merchant_name || 'Unknown',
-                                amount: transaction.base_currency_amount,
-                                mcc: mccCode,
-                                reason: 'MCC not in eligible categories',
-                                date: transaction.transaction_date || transaction.date
-                            });
-                        }
-                    }
                 } else {
                     if (includeDetails) {
-                        trackWrongPaymentMethod(transaction, transactionDetails);
+                        transactionDetails.excluded.notEligible.push({
+                            merchant: transaction.merchant_name || 'Unknown',
+                            amount: transaction.base_currency_amount,
+                            mcc: mccCode,
+                            reason: 'MCC not in eligible categories',
+                            date: transaction.transaction_date || transaction.date
+                        });
                     }
                 }
-            });
-
-            const result = { contactless: contactlessBucket, online: onlineBucket };
-            if (includeDetails) {
-                result.details = transactionDetails;
+            } else {
+                if (includeDetails) {
+                    transactionDetails.excluded.wrongPaymentMethod.push({
+                        merchant: transaction.merchant_name || 'Unknown',
+                        amount: transaction.base_currency_amount,
+                        paymentMethod: transaction.payment_tag || 'unknown',
+                        date: transaction.transaction_date || transaction.date
+                    });
+                }
             }
-            return result;
+        });
+
+        const result = { contactless: contactlessBucket, online: onlineBucket };
+        if (includeDetails) {
+            result.details = transactionDetails;
         }
+        return result;
     }
 
     // Check if button should be visible
@@ -633,12 +649,9 @@
         return isSupportedCard;
     }
 
-    // Create the SubCaps button
-    function createButton() {
-        const button = document.createElement('button');
-        button.id = 'heymax-subcaps-button';
-        button.textContent = 'Subcaps';
-        button.style.cssText = `
+    // Create button styles object
+    const BUTTON_STYLES = {
+        base: `
             position: fixed;
             bottom: 20px;
             right: 20px;
@@ -654,21 +667,33 @@
             z-index: 10000;
             transition: all 0.3s ease;
             display: none;
-        `;
+        `,
+        hover: {
+            backgroundColor: '#45a049',
+            transform: 'scale(1.05)'
+        },
+        normal: {
+            backgroundColor: '#4CAF50',
+            transform: 'scale(1)'
+        }
+    };
 
-        button.addEventListener('mouseenter', function() {
-            button.style.backgroundColor = '#45a049';
-            button.style.transform = 'scale(1.05)';
+    // Create the SubCaps button
+    function createButton() {
+        const button = document.createElement('button');
+        button.id = 'heymax-subcaps-button';
+        button.textContent = 'Subcaps';
+        button.style.cssText = BUTTON_STYLES.base;
+
+        button.addEventListener('mouseenter', () => {
+            Object.assign(button.style, BUTTON_STYLES.hover);
         });
 
-        button.addEventListener('mouseleave', function() {
-            button.style.backgroundColor = '#4CAF50';
-            button.style.transform = 'scale(1)';
+        button.addEventListener('mouseleave', () => {
+            Object.assign(button.style, BUTTON_STYLES.normal);
         });
 
-        button.addEventListener('click', function() {
-            showOverlay();
-        });
+        button.addEventListener('click', showOverlay);
 
         return button;
     }
@@ -821,27 +846,29 @@
         }
     }
 
+    // Helper function to determine color based on value and card type
+    function getBucketColor(value, cardType) {
+        if (cardType === 'UOB VS') {
+            if (value < 1000) return '#FFC107'; // Yellow
+            if (value <= 1200) return '#4CAF50'; // Green
+            return '#f44336'; // Red
+        }
+        // UOB PPV
+        return value < 600 ? '#4CAF50' : '#f44336';
+    }
+
+    // Helper function to get bucket limit
+    function getBucketLimit(cardType) {
+        return cardType === 'UOB VS' ? 1200 : 600;
+    }
+
     // Display calculation results
     function displayResults(results, transactionCount, cardShortName = 'UOB PPV') {
         const resultsDiv = document.getElementById('heymax-subcaps-results');
         if (!resultsDiv) return;
 
-        // Helper function to determine color based on value and card type
-        function getValueColor(value, bucketType, cardType) {
-            if (cardType === 'UOB VS') {
-                // For UOB VS: yellow < 1000, green 1000-1200, red > 1200
-                if (value < 1000) return '#FFC107'; // Yellow
-                if (value <= 1200) return '#4CAF50'; // Green
-                return '#f44336'; // Red
-            } else {
-                // For UOB PPV: green < 600, red >= 600
-                if (value < 600) return '#4CAF50'; // Green
-                return '#f44336'; // Red
-            }
-        }
-
-        const contactlessColor = getValueColor(results.contactless, 'contactless', cardShortName);
-        const contactlessLimit = cardShortName === 'UOB VS' ? '1200' : '600';
+        const contactlessColor = getBucketColor(results.contactless, cardShortName);
+        const contactlessLimit = getBucketLimit(cardShortName);
 
         let html = `
             <div style="margin-bottom: 20px;">
@@ -876,7 +903,7 @@
         `;
 
         if (cardShortName === 'UOB VS') {
-            const foreignCurrencyColor = getValueColor(results.foreignCurrency, 'foreignCurrency', cardShortName);
+            const foreignCurrencyColor = getBucketColor(results.foreignCurrency, cardShortName);
             html += `
                 <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
                     <h3 style="margin-top: 0; color: #333; font-size: 18px;">Foreign Currency Bucket</h3>
@@ -903,7 +930,7 @@
                 </div>
             `;
         } else {
-            const onlineColor = getValueColor(results.online, 'online', cardShortName);
+            const onlineColor = getBucketColor(results.online, cardShortName);
             html += `
                 <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
                     <h3 style="margin-top: 0; color: #333; font-size: 18px;">Online Bucket</h3>
