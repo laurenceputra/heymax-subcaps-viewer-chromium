@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HeyMax SubCaps Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.2.3
+// @version      1.3.0
 // @description  Monitor network requests and display SubCaps calculations for UOB cards on HeyMax
 // @author       Laurence Putra Franslay (@laurenceputra)
 // @source       https://github.com/laurenceputra/heymax-subcaps-viewer/
@@ -304,6 +304,189 @@
     };
 
     console.log('[HeyMax SubCaps Viewer] API interception initialized');
+
+    // ============================================================================
+    // PART 4.5: PATCH PROTECTION WITH EXPONENTIAL BACKOFF
+    // ============================================================================
+
+    let patchCheckInterval = 1000; // Start at 1 second
+    const MIN_CHECK_INTERVAL = 1000; // Minimum 1 second
+    const MAX_CHECK_INTERVAL = 60000; // Maximum 60 seconds
+    const BACKOFF_MULTIPLIER = 1.5; // Increase by 50% each time
+    let consecutiveStableChecks = 0;
+    const STABLE_CHECKS_THRESHOLD = 10; // If stable for 10 checks, increase interval
+
+    function checkAndReapplyPatches() {
+        let patchesOverwritten = false;
+
+        // Check if fetch was overwritten
+        if (targetWindow.fetch !== targetWindow.fetch.patchedVersion) {
+            infoLog('⚠️ Fetch patch overwritten, re-applying...', '#FF9800');
+            const currentFetch = targetWindow.fetch;
+            targetWindow.fetch = async function(...args) {
+                const [resource, config] = args;
+                const url = typeof resource === 'string' ? resource : resource.url;
+                const method = config?.method || 'GET';
+
+                debugLog(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Intercepted: ${method} ${url}`, 'color: #2196F3; font-weight: bold;');
+
+                const response = await originalFetch.apply(this, args);
+                
+                const shouldLog = shouldLogUrl(url);
+                debugLog(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Response: ${method} ${url} - Status: ${response.status} - Will Log: ${shouldLog}`, 
+                    shouldLog ? 'color: #4CAF50;' : 'color: #9E9E9E;');
+                
+                if (!shouldLog) {
+                    return response;
+                }
+
+                const clonedResponse = response.clone();
+                
+                try {
+                    const contentType = response.headers.get('content-type');
+                    let responseData;
+                    
+                    if (contentType && contentType.includes('application/json')) {
+                        responseData = await clonedResponse.json();
+                        const timestamp = new Date().toISOString();
+                        
+                        if (DEBUG_MODE) {
+                            console.groupCollapsed(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Response Logged`, 'color: #2196F3; font-weight: bold;');
+                            console.log('Method:', method);
+                            console.log('URL:', url);
+                            console.log('Status:', response.status);
+                            console.log('Response Data:', responseData);
+                            console.groupEnd();
+                        }
+                        
+                        storeApiData('fetch', method, url, response.status, responseData, timestamp);
+                    } else {
+                        const text = await clonedResponse.text();
+                        if (text.length < 1000) {
+                            const timestamp = new Date().toISOString();
+                            
+                            if (DEBUG_MODE) {
+                                console.groupCollapsed(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Response Logged`, 'color: #2196F3; font-weight: bold;');
+                                console.log('Method:', method);
+                                console.log('URL:', url);
+                                console.log('Status:', response.status);
+                                console.log('Response Data:', text);
+                                console.groupEnd();
+                            }
+                            
+                            storeApiData('fetch', method, url, response.status, text, timestamp);
+                        }
+                    }
+                } catch (error) {
+                    errorLog('Error reading fetch response:', error);
+                }
+
+                return response;
+            };
+            targetWindow.fetch.patchedVersion = true;
+            patchesOverwritten = true;
+        }
+
+        // Check if XHR was overwritten
+        if (targetWindow.XMLHttpRequest.prototype.open !== originalXHROpen || 
+            targetWindow.XMLHttpRequest.prototype.send !== originalXHRSend) {
+            infoLog('⚠️ XHR patch overwritten, re-applying...', '#FF9800');
+            
+            targetWindow.XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+                this._method = method;
+                this._url = url;
+                debugLog(`%c[HeyMax SubCaps Viewer] 📡 XHR Intercepted: ${method} ${url}`, 'color: #FF9800; font-weight: bold;');
+                return originalXHROpen.apply(this, [method, url, ...rest]);
+            };
+
+            targetWindow.XMLHttpRequest.prototype.send = function(...args) {
+                const url = this._url;
+                const method = this._method;
+                
+                if (url && typeof url === 'string') {
+                    this.addEventListener('load', function() {
+                        if (this.readyState === 4 && this.status >= 200 && this.status < 300) {
+                            const shouldLog = shouldLogUrl(url);
+                            debugLog(`%c[HeyMax SubCaps Viewer] 📡 XHR Response: ${method} ${url} - Status: ${this.status} - Will Log: ${shouldLog}`, 
+                                shouldLog ? 'color: #4CAF50;' : 'color: #9E9E9E;');
+                            
+                            if (!shouldLog) {
+                                return;
+                            }
+
+                            try {
+                                const contentType = this.getResponseHeader('content-type');
+                                let responseData;
+
+                                if (contentType && contentType.includes('application/json')) {
+                                    responseData = JSON.parse(this.responseText);
+                                } else if (this.responseText && this.responseText.length < 1000) {
+                                    responseData = this.responseText;
+                                }
+
+                                if (responseData) {
+                                    const timestamp = new Date().toISOString();
+                                    
+                                    if (DEBUG_MODE) {
+                                        console.groupCollapsed(`%c[HeyMax SubCaps Viewer] 📡 XHR Response Logged`, 'color: #FF9800; font-weight: bold;');
+                                        console.log('Method:', method);
+                                        console.log('URL:', url);
+                                        console.log('Status:', this.status);
+                                        console.log('Response Data:', responseData);
+                                        console.groupEnd();
+                                    }
+                                    
+                                    storeApiData('xhr', method, url, this.status, responseData, timestamp);
+                                }
+                            } catch (error) {
+                                errorLog('Error processing XHR response:', error);
+                            }
+                        }
+                    });
+                }
+                
+                return originalXHRSend.apply(this, args);
+            };
+            
+            patchesOverwritten = true;
+        }
+
+        // Adjust check interval based on patch stability
+        if (patchesOverwritten) {
+            // Patches were overwritten, reset to minimum interval
+            consecutiveStableChecks = 0;
+            patchCheckInterval = MIN_CHECK_INTERVAL;
+            debugLog(`[HeyMax SubCaps Viewer] Patch check interval reset to ${patchCheckInterval}ms`);
+        } else {
+            // Patches are stable
+            consecutiveStableChecks++;
+            
+            // After enough stable checks, increase interval with exponential backoff
+            if (consecutiveStableChecks >= STABLE_CHECKS_THRESHOLD) {
+                const newInterval = Math.min(
+                    Math.floor(patchCheckInterval * BACKOFF_MULTIPLIER),
+                    MAX_CHECK_INTERVAL
+                );
+                
+                if (newInterval !== patchCheckInterval) {
+                    patchCheckInterval = newInterval;
+                    debugLog(`[HeyMax SubCaps Viewer] Patches stable, increasing check interval to ${patchCheckInterval}ms`);
+                }
+                
+                consecutiveStableChecks = 0; // Reset counter for next backoff cycle
+            }
+        }
+
+        // Schedule next check with current interval
+        setTimeout(checkAndReapplyPatches, patchCheckInterval);
+    }
+
+    // Mark initial patches
+    targetWindow.fetch.patchedVersion = true;
+
+    // Start patch monitoring
+    setTimeout(checkAndReapplyPatches, patchCheckInterval);
+    infoLog('🛡️ Patch protection initialized with exponential backoff', '#4CAF50');
 
     // ============================================================================
     // PART 5: UI COMPONENTS

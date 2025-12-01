@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HeyMax SubCaps Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.2.0
+// @version      1.3.0
 // @description  Monitor network requests and display SubCaps calculations for UOB cards on HeyMax
 // @author       Laurence Putra Franslay (@laurenceputra)
 // @source       https://github.com/laurenceputra/heymax-subcaps-viewer/
@@ -14,16 +14,6 @@
 // @run-at       document-start
 // @grant        unsafeWindow
 // ==/UserScript==
-
-// ============================================================================
-// MIGRATION NOTICE
-// ============================================================================
-// This script location has been deprecated. Future updates will be served from:
-// https://github.com/laurenceputra/heymax-subcaps-viewer/raw/refs/heads/main/src/heymax-subcaps-viewer.user.js
-//
-// The @updateURL and @downloadURL above point to the new location, so your
-// Tampermonkey should automatically update to the correct version.
-// ============================================================================
 
 (function() {
     'use strict';
@@ -316,6 +306,189 @@
     console.log('[HeyMax SubCaps Viewer] API interception initialized');
 
     // ============================================================================
+    // PART 4.5: PATCH PROTECTION WITH EXPONENTIAL BACKOFF
+    // ============================================================================
+
+    let patchCheckInterval = 1000; // Start at 1 second
+    const MIN_CHECK_INTERVAL = 1000; // Minimum 1 second
+    const MAX_CHECK_INTERVAL = 60000; // Maximum 60 seconds
+    const BACKOFF_MULTIPLIER = 1.5; // Increase by 50% each time
+    let consecutiveStableChecks = 0;
+    const STABLE_CHECKS_THRESHOLD = 10; // If stable for 10 checks, increase interval
+
+    function checkAndReapplyPatches() {
+        let patchesOverwritten = false;
+
+        // Check if fetch was overwritten
+        if (targetWindow.fetch !== targetWindow.fetch.patchedVersion) {
+            infoLog('⚠️ Fetch patch overwritten, re-applying...', '#FF9800');
+            const currentFetch = targetWindow.fetch;
+            targetWindow.fetch = async function(...args) {
+                const [resource, config] = args;
+                const url = typeof resource === 'string' ? resource : resource.url;
+                const method = config?.method || 'GET';
+
+                debugLog(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Intercepted: ${method} ${url}`, 'color: #2196F3; font-weight: bold;');
+
+                const response = await originalFetch.apply(this, args);
+                
+                const shouldLog = shouldLogUrl(url);
+                debugLog(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Response: ${method} ${url} - Status: ${response.status} - Will Log: ${shouldLog}`, 
+                    shouldLog ? 'color: #4CAF50;' : 'color: #9E9E9E;');
+                
+                if (!shouldLog) {
+                    return response;
+                }
+
+                const clonedResponse = response.clone();
+                
+                try {
+                    const contentType = response.headers.get('content-type');
+                    let responseData;
+                    
+                    if (contentType && contentType.includes('application/json')) {
+                        responseData = await clonedResponse.json();
+                        const timestamp = new Date().toISOString();
+                        
+                        if (DEBUG_MODE) {
+                            console.groupCollapsed(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Response Logged`, 'color: #2196F3; font-weight: bold;');
+                            console.log('Method:', method);
+                            console.log('URL:', url);
+                            console.log('Status:', response.status);
+                            console.log('Response Data:', responseData);
+                            console.groupEnd();
+                        }
+                        
+                        storeApiData('fetch', method, url, response.status, responseData, timestamp);
+                    } else {
+                        const text = await clonedResponse.text();
+                        if (text.length < 1000) {
+                            const timestamp = new Date().toISOString();
+                            
+                            if (DEBUG_MODE) {
+                                console.groupCollapsed(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Response Logged`, 'color: #2196F3; font-weight: bold;');
+                                console.log('Method:', method);
+                                console.log('URL:', url);
+                                console.log('Status:', response.status);
+                                console.log('Response Data:', text);
+                                console.groupEnd();
+                            }
+                            
+                            storeApiData('fetch', method, url, response.status, text, timestamp);
+                        }
+                    }
+                } catch (error) {
+                    errorLog('Error reading fetch response:', error);
+                }
+
+                return response;
+            };
+            targetWindow.fetch.patchedVersion = true;
+            patchesOverwritten = true;
+        }
+
+        // Check if XHR was overwritten
+        if (targetWindow.XMLHttpRequest.prototype.open !== originalXHROpen || 
+            targetWindow.XMLHttpRequest.prototype.send !== originalXHRSend) {
+            infoLog('⚠️ XHR patch overwritten, re-applying...', '#FF9800');
+            
+            targetWindow.XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+                this._method = method;
+                this._url = url;
+                debugLog(`%c[HeyMax SubCaps Viewer] 📡 XHR Intercepted: ${method} ${url}`, 'color: #FF9800; font-weight: bold;');
+                return originalXHROpen.apply(this, [method, url, ...rest]);
+            };
+
+            targetWindow.XMLHttpRequest.prototype.send = function(...args) {
+                const url = this._url;
+                const method = this._method;
+                
+                if (url && typeof url === 'string') {
+                    this.addEventListener('load', function() {
+                        if (this.readyState === 4 && this.status >= 200 && this.status < 300) {
+                            const shouldLog = shouldLogUrl(url);
+                            debugLog(`%c[HeyMax SubCaps Viewer] 📡 XHR Response: ${method} ${url} - Status: ${this.status} - Will Log: ${shouldLog}`, 
+                                shouldLog ? 'color: #4CAF50;' : 'color: #9E9E9E;');
+                            
+                            if (!shouldLog) {
+                                return;
+                            }
+
+                            try {
+                                const contentType = this.getResponseHeader('content-type');
+                                let responseData;
+
+                                if (contentType && contentType.includes('application/json')) {
+                                    responseData = JSON.parse(this.responseText);
+                                } else if (this.responseText && this.responseText.length < 1000) {
+                                    responseData = this.responseText;
+                                }
+
+                                if (responseData) {
+                                    const timestamp = new Date().toISOString();
+                                    
+                                    if (DEBUG_MODE) {
+                                        console.groupCollapsed(`%c[HeyMax SubCaps Viewer] 📡 XHR Response Logged`, 'color: #FF9800; font-weight: bold;');
+                                        console.log('Method:', method);
+                                        console.log('URL:', url);
+                                        console.log('Status:', this.status);
+                                        console.log('Response Data:', responseData);
+                                        console.groupEnd();
+                                    }
+                                    
+                                    storeApiData('xhr', method, url, this.status, responseData, timestamp);
+                                }
+                            } catch (error) {
+                                errorLog('Error processing XHR response:', error);
+                            }
+                        }
+                    });
+                }
+                
+                return originalXHRSend.apply(this, args);
+            };
+            
+            patchesOverwritten = true;
+        }
+
+        // Adjust check interval based on patch stability
+        if (patchesOverwritten) {
+            // Patches were overwritten, reset to minimum interval
+            consecutiveStableChecks = 0;
+            patchCheckInterval = MIN_CHECK_INTERVAL;
+            debugLog(`[HeyMax SubCaps Viewer] Patch check interval reset to ${patchCheckInterval}ms`);
+        } else {
+            // Patches are stable
+            consecutiveStableChecks++;
+            
+            // After enough stable checks, increase interval with exponential backoff
+            if (consecutiveStableChecks >= STABLE_CHECKS_THRESHOLD) {
+                const newInterval = Math.min(
+                    Math.floor(patchCheckInterval * BACKOFF_MULTIPLIER),
+                    MAX_CHECK_INTERVAL
+                );
+                
+                if (newInterval !== patchCheckInterval) {
+                    patchCheckInterval = newInterval;
+                    debugLog(`[HeyMax SubCaps Viewer] Patches stable, increasing check interval to ${patchCheckInterval}ms`);
+                }
+                
+                consecutiveStableChecks = 0; // Reset counter for next backoff cycle
+            }
+        }
+
+        // Schedule next check with current interval
+        setTimeout(checkAndReapplyPatches, patchCheckInterval);
+    }
+
+    // Mark initial patches
+    targetWindow.fetch.patchedVersion = true;
+
+    // Start patch monitoring
+    setTimeout(checkAndReapplyPatches, patchCheckInterval);
+    infoLog('🛡️ Patch protection initialized with exponential backoff', '#4CAF50');
+
+    // ============================================================================
     // PART 5: UI COMPONENTS
     // ============================================================================
 
@@ -326,7 +499,7 @@
     }
 
     // Calculate buckets from transaction data
-    function calculateBuckets(apiResponse, cardShortName = 'UOB PPV') {
+    function calculateBuckets(apiResponse, cardShortName = 'UOB PPV', includeDetails = false) {
         const ppvShoppingMcc = [4816, 5262, 5306, 5309, 5310, 5311, 5331, 5399, 5611, 5621, 5631, 5641, 5651, 5661, 5691, 5699, 5732, 5733, 5734, 5735, 5912, 5942, 5944, 5945, 5946, 5947, 5948, 5949, 5964, 5965, 5966, 5967, 5968, 5969, 5970, 5992, 5999];
         const ppvDiningMcc = [5811, 5812, 5814, 5333, 5411, 5441, 5462, 5499, 8012, 9751];
         const ppvEntertainmentMcc = [7278, 7832, 7841, 7922, 7991, 7996, 7998, 7999];
@@ -346,62 +519,165 @@
         
         const roundDownToNearestFive = (amount) => Math.floor(amount / 5) * 5;
         
-        const isBlacklisted = (transaction) => {
+        const getBlacklistReason = (transaction) => {
             const mccCode = parseInt(transaction.mcc_code, 10);
             if (blacklistMcc.includes(mccCode)) {
-                return true;
+                return `Blacklisted MCC ${mccCode}`;
             }
             
             if (transaction.merchant_name) {
                 for (const prefix of blacklistMerchantPrefixes) {
                     if (transaction.merchant_name.startsWith(prefix)) {
-                        return true;
+                        return `Blacklisted merchant prefix: ${prefix}`;
                     }
                 }
             }
             
-            return false;
+            return null;
+        };
+        
+        // Helper function to track blacklisted transactions
+        const trackBlacklistedTransaction = (transaction, blacklistReason, transactionDetails) => {
+            transactionDetails.excluded.blacklisted.push({
+                merchant: transaction.merchant_name || 'Unknown',
+                amount: transaction.base_currency_amount,
+                reason: blacklistReason,
+                mcc: transaction.mcc_code,
+                date: transaction.transaction_date || transaction.date
+            });
+        };
+        
+        // Helper function to track wrong payment method transactions
+        const trackWrongPaymentMethod = (transaction, transactionDetails) => {
+            transactionDetails.excluded.wrongPaymentMethod.push({
+                merchant: transaction.merchant_name || 'Unknown',
+                amount: transaction.base_currency_amount,
+                paymentMethod: transaction.payment_tag || 'unknown',
+                date: transaction.transaction_date || transaction.date
+            });
         };
 
         let contactlessBucket = 0;
         let onlineBucket = 0;
         let foreignCurrencyBucket = 0;
+        
+        // Track transaction details if requested
+        const transactionDetails = includeDetails ? {
+            included: {
+                contactless: [],
+                online: [],
+                foreignCurrency: []
+            },
+            excluded: {
+                blacklisted: [],
+                notEligible: [],
+                wrongPaymentMethod: []
+            }
+        } : null;
 
         if (cardShortName === 'UOB VS') {
             apiResponse.forEach((transactionObj) => {
                 const transaction = transactionObj.transaction;
                 
-                if (isBlacklisted(transaction)) {
+                const blacklistReason = getBlacklistReason(transaction);
+                if (blacklistReason) {
+                    if (includeDetails) {
+                        trackBlacklistedTransaction(transaction, blacklistReason, transactionDetails);
+                    }
                     return;
                 }
 
                 if (transaction.original_currency && transaction.original_currency !== 'SGD') {
                     foreignCurrencyBucket += transaction.base_currency_amount;
+                    if (includeDetails) {
+                        transactionDetails.included.foreignCurrency.push({
+                            merchant: transaction.merchant_name || 'Unknown',
+                            amount: transaction.base_currency_amount,
+                            currency: transaction.original_currency,
+                            date: transaction.transaction_date || transaction.date
+                        });
+                    }
                 } else if (transaction.payment_tag === 'contactless') {
                     contactlessBucket += transaction.base_currency_amount;
-                }
-            });
-
-            return { contactless: contactlessBucket, foreignCurrency: foreignCurrencyBucket };
-        } else {
-            apiResponse.forEach((transactionObj) => {
-                const transaction = transactionObj.transaction;
-                
-                if (isBlacklisted(transaction)) {
-                    return;
-                }
-
-                if (transaction.payment_tag === 'contactless') {
-                    contactlessBucket += roundDownToNearestFive(transaction.base_currency_amount);
-                } else if (transaction.payment_tag === 'online') {
-                    const mccCode = parseInt(transaction.mcc_code, 10);
-                    if (ppvShoppingMcc.includes(mccCode) || ppvDiningMcc.includes(mccCode) || ppvEntertainmentMcc.includes(mccCode)) {
-                        onlineBucket += roundDownToNearestFive(transaction.base_currency_amount);
+                    if (includeDetails) {
+                        transactionDetails.included.contactless.push({
+                            merchant: transaction.merchant_name || 'Unknown',
+                            amount: transaction.base_currency_amount,
+                            date: transaction.transaction_date || transaction.date
+                        });
+                    }
+                } else {
+                    if (includeDetails) {
+                        trackWrongPaymentMethod(transaction, transactionDetails);
                     }
                 }
             });
 
-            return { contactless: contactlessBucket, online: onlineBucket };
+            const result = { contactless: contactlessBucket, foreignCurrency: foreignCurrencyBucket };
+            if (includeDetails) {
+                result.details = transactionDetails;
+            }
+            return result;
+        } else {
+            apiResponse.forEach((transactionObj) => {
+                const transaction = transactionObj.transaction;
+                
+                const blacklistReason = getBlacklistReason(transaction);
+                if (blacklistReason) {
+                    if (includeDetails) {
+                        trackBlacklistedTransaction(transaction, blacklistReason, transactionDetails);
+                    }
+                    return;
+                }
+
+                if (transaction.payment_tag === 'contactless') {
+                    const roundedAmount = roundDownToNearestFive(transaction.base_currency_amount);
+                    contactlessBucket += roundedAmount;
+                    if (includeDetails) {
+                        transactionDetails.included.contactless.push({
+                            merchant: transaction.merchant_name || 'Unknown',
+                            amount: transaction.base_currency_amount,
+                            roundedAmount: roundedAmount,
+                            date: transaction.transaction_date || transaction.date
+                        });
+                    }
+                } else if (transaction.payment_tag === 'online') {
+                    const mccCode = parseInt(transaction.mcc_code, 10);
+                    if (ppvShoppingMcc.includes(mccCode) || ppvDiningMcc.includes(mccCode) || ppvEntertainmentMcc.includes(mccCode)) {
+                        const roundedAmount = roundDownToNearestFive(transaction.base_currency_amount);
+                        onlineBucket += roundedAmount;
+                        if (includeDetails) {
+                            transactionDetails.included.online.push({
+                                merchant: transaction.merchant_name || 'Unknown',
+                                amount: transaction.base_currency_amount,
+                                roundedAmount: roundedAmount,
+                                mcc: mccCode,
+                                date: transaction.transaction_date || transaction.date
+                            });
+                        }
+                    } else {
+                        if (includeDetails) {
+                            transactionDetails.excluded.notEligible.push({
+                                merchant: transaction.merchant_name || 'Unknown',
+                                amount: transaction.base_currency_amount,
+                                mcc: mccCode,
+                                reason: 'MCC not in eligible categories',
+                                date: transaction.transaction_date || transaction.date
+                            });
+                        }
+                    }
+                } else {
+                    if (includeDetails) {
+                        trackWrongPaymentMethod(transaction, transactionDetails);
+                    }
+                }
+            });
+
+            const result = { contactless: contactlessBucket, online: onlineBucket };
+            if (includeDetails) {
+                result.details = transactionDetails;
+            }
+            return result;
         }
     }
 
@@ -612,7 +888,7 @@
 
         try {
             const transactions = transactionsData.data;
-            const results = calculateBuckets(transactions, cardShortName);
+            const results = calculateBuckets(transactions, cardShortName, true); // Request details
 
             displayResults(results, transactions.length, cardShortName);
         } catch (error) {
@@ -664,6 +940,14 @@
                     <span style="color: ${contactlessColor};">$${results.contactless.toFixed(2)}</span>
                     <span style="color: #333;"> / $${contactlessLimit}</span>
                 </p>
+                <div style="width: 100%; height: 12px; background-color: #e0e0e0; border-radius: 6px; overflow: hidden; margin: 15px 0;">
+                    <div style="
+                        width: ${Math.min((results.contactless / parseFloat(contactlessLimit)) * 100, 100)}%;
+                        height: 100%;
+                        background-color: ${contactlessColor};
+                        transition: width 0.3s ease;
+                    "></div>
+                </div>
                 <p style="color: #666; font-size: 14px; margin-bottom: 0;">
                     Total from contactless payments${cardShortName === 'UOB PPV' ? ' (rounded down to nearest $5)' : ''}
                 </p>
@@ -684,6 +968,14 @@
                         <span style="color: ${foreignCurrencyColor};">$${results.foreignCurrency.toFixed(2)}</span>
                         <span style="color: #333;"> / $1200</span>
                     </p>
+                    <div style="width: 100%; height: 12px; background-color: #e0e0e0; border-radius: 6px; overflow: hidden; margin: 15px 0;">
+                        <div style="
+                            width: ${Math.min((results.foreignCurrency / 1200) * 100, 100)}%;
+                            height: 100%;
+                            background-color: ${foreignCurrencyColor};
+                            transition: width 0.3s ease;
+                        "></div>
+                    </div>
                     <p style="color: #666; font-size: 14px; margin-bottom: 0;">
                         Total from non-SGD transactions
                     </p>
@@ -703,9 +995,40 @@
                         <span style="color: ${onlineColor};">$${results.online.toFixed(2)}</span>
                         <span style="color: #333;"> / $600</span>
                     </p>
+                    <div style="width: 100%; height: 12px; background-color: #e0e0e0; border-radius: 6px; overflow: hidden; margin: 15px 0;">
+                        <div style="
+                            width: ${Math.min((results.online / 600) * 100, 100)}%;
+                            height: 100%;
+                            background-color: ${onlineColor};
+                            transition: width 0.3s ease;
+                        "></div>
+                    </div>
                     <p style="color: #666; font-size: 14px; margin-bottom: 0;">
                         Total from eligible online transactions (rounded down to nearest $5)
                     </p>
+                </div>
+            `;
+        }
+
+        // Add transaction details section if available
+        if (results.details) {
+            html += `
+                <div style="margin-top: 20px; border-top: 2px solid #e0e0e0; padding-top: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3 style="margin: 0; color: #333; font-size: 16px;">Transaction Details</h3>
+                        <button id="toggle-details-btn" style="
+                            padding: 6px 16px;
+                            background-color: #2196F3;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            font-size: 13px;
+                            cursor: pointer;
+                        ">Show Details</button>
+                    </div>
+                    <div id="transaction-details-content" style="display: none; margin-top: 15px;">
+                        ${generateTransactionDetailsHTML(results.details, cardShortName)}
+                    </div>
                 </div>
             `;
         }
@@ -719,6 +1042,173 @@
         `;
 
         resultsDiv.innerHTML = html;
+        
+        // Add event listener for toggle details button
+        const toggleBtn = document.getElementById('toggle-details-btn');
+        const detailsContent = document.getElementById('transaction-details-content');
+        if (toggleBtn && detailsContent) {
+            toggleBtn.addEventListener('click', function() {
+                if (detailsContent.style.display === 'none') {
+                    detailsContent.style.display = 'block';
+                    toggleBtn.textContent = 'Hide Details';
+                    toggleBtn.style.backgroundColor = '#F57C00';
+                } else {
+                    detailsContent.style.display = 'none';
+                    toggleBtn.textContent = 'Show Details';
+                    toggleBtn.style.backgroundColor = '#2196F3';
+                }
+            });
+        }
+    }
+
+    // Generate HTML for transaction details
+    function generateTransactionDetailsHTML(details, cardShortName) {
+        // Helper function to generate table header cell
+        const headerCell = (text, align = 'left') => 
+            `<th style="padding: 8px; text-align: ${align}; border-bottom: 1px solid #ddd;">${text}</th>`;
+        
+        // Helper function to generate table data cell
+        const dataCell = (text, align = 'left', fontSize = null) => {
+            const fontSizeStyle = fontSize ? `font-size: ${fontSize}; ` : '';
+            return `<td style="padding: 6px 8px; text-align: ${align}; ${fontSizeStyle}border-bottom: 1px solid #eee;">${text}</td>`;
+        };
+        
+        // Helper function to format currency
+        const formatCurrency = (amount) => `$${amount.toFixed(2)}`;
+        
+        // Helper function to check if rounded column should be shown
+        const showRoundedColumn = cardShortName === 'UOB PPV';
+        
+        // Helper function to generate included transaction row
+        const generateIncludedRow = (txn) => {
+            let row = `<tr>`;
+            row += dataCell(txn.merchant);
+            row += dataCell(formatCurrency(txn.amount), 'right');
+            if (showRoundedColumn && txn.roundedAmount !== undefined) {
+                row += dataCell(formatCurrency(txn.roundedAmount), 'right');
+            }
+            row += `</tr>`;
+            return row;
+        };
+        
+        // Helper function to generate table wrapper
+        const tableWrapper = (headers, rows) => `
+            <div style="max-height: 200px; overflow-y: auto; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: #f5f5f5;">
+                            ${headers}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        let html = '';
+        
+        // Included transactions
+        const includedSections = cardShortName === 'UOB VS' 
+            ? [
+                { key: 'contactless', title: 'Contactless Transactions', count: details.included.contactless.length },
+                { key: 'foreignCurrency', title: 'Foreign Currency Transactions', count: details.included.foreignCurrency.length }
+              ]
+            : [
+                { key: 'contactless', title: 'Contactless Transactions', count: details.included.contactless.length },
+                { key: 'online', title: 'Online Transactions', count: details.included.online.length }
+              ];
+        
+        html += '<h4 style="color: #4CAF50; margin-top: 0;">Included Transactions</h4>';
+        
+        includedSections.forEach(section => {
+            if (section.count > 0) {
+                // Build headers
+                let headers = headerCell('Merchant') + headerCell('Amount', 'right');
+                if (showRoundedColumn) {
+                    headers += headerCell('Rounded', 'right');
+                }
+                
+                // Build rows
+                const rows = details.included[section.key].map(generateIncludedRow).join('');
+                
+                html += `
+                    <div style="margin-bottom: 15px;">
+                        <strong>${section.title} (${section.count})</strong>
+                        ${tableWrapper(headers, rows)}
+                    </div>
+                `;
+            }
+        });
+        
+        // Excluded transactions
+        const excludedCount = details.excluded.blacklisted.length + 
+                             details.excluded.notEligible.length + 
+                             details.excluded.wrongPaymentMethod.length;
+        
+        if (excludedCount > 0) {
+            html += '<h4 style="color: #f44336; margin-top: 20px;">Excluded Transactions</h4>';
+            
+            // Blacklisted transactions
+            if (details.excluded.blacklisted.length > 0) {
+                const headers = headerCell('Merchant') + headerCell('Amount', 'right') + headerCell('Reason');
+                const rows = details.excluded.blacklisted.map(txn => {
+                    return `<tr>` +
+                        dataCell(txn.merchant) +
+                        dataCell(formatCurrency(txn.amount), 'right') +
+                        dataCell(txn.reason, 'left', '11px') +
+                        `</tr>`;
+                }).join('');
+                
+                html += `
+                    <div style="margin-bottom: 15px;">
+                        <strong>Blacklisted (${details.excluded.blacklisted.length})</strong>
+                        ${tableWrapper(headers, rows)}
+                    </div>
+                `;
+            }
+            
+            // Not eligible MCC transactions
+            if (details.excluded.notEligible.length > 0) {
+                const headers = headerCell('Merchant') + headerCell('Amount', 'right') + headerCell('MCC', 'center');
+                const rows = details.excluded.notEligible.map(txn => {
+                    return `<tr>` +
+                        dataCell(txn.merchant) +
+                        dataCell(formatCurrency(txn.amount), 'right') +
+                        dataCell(txn.mcc, 'center', '11px') +
+                        `</tr>`;
+                }).join('');
+                
+                html += `
+                    <div style="margin-bottom: 15px;">
+                        <strong>Not Eligible MCC (${details.excluded.notEligible.length})</strong>
+                        ${tableWrapper(headers, rows)}
+                    </div>
+                `;
+            }
+            
+            // Wrong payment method transactions
+            if (details.excluded.wrongPaymentMethod.length > 0) {
+                const headers = headerCell('Merchant') + headerCell('Amount', 'right') + headerCell('Method', 'center');
+                const rows = details.excluded.wrongPaymentMethod.map(txn => {
+                    return `<tr>` +
+                        dataCell(txn.merchant) +
+                        dataCell(formatCurrency(txn.amount), 'right') +
+                        dataCell(txn.paymentMethod, 'center', '11px') +
+                        `</tr>`;
+                }).join('');
+                
+                html += `
+                    <div style="margin-bottom: 15px;">
+                        <strong>Wrong Payment Method (${details.excluded.wrongPaymentMethod.length})</strong>
+                        ${tableWrapper(headers, rows)}
+                    </div>
+                `;
+            }
+        }
+        
+        return html;
     }
 
     // Update button visibility
