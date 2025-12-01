@@ -341,7 +341,7 @@
         let patchesOverwritten = false;
 
         // Check if fetch was overwritten (marker property missing or false)
-        if (!targetWindow.fetch.patchedVersion) {
+        if (typeof targetWindow.fetch !== 'function' || !targetWindow.fetch.patchedVersion) {
             infoLog('⚠️ Fetch patch overwritten, re-applying...', '#FF9800');
             targetWindow.fetch = createFetchInterceptor();
             targetWindow.fetch.patchedVersion = true;
