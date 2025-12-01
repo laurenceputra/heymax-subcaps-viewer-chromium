@@ -78,6 +78,31 @@ When implementing features or reviewing code:
 - Comments for complex logic only
 - Handle all error cases
 
+## Git Workflow
+
+**CRITICAL: Always start from the main branch when creating new feature/bug fix branches for pull requests.**
+
+Before starting any new feature or bug fix:
+
+```bash
+# 1. Ensure you're on main
+git checkout main
+
+# 2. Pull latest changes
+git pull origin main
+
+# 3. Create new branch from main
+git checkout -b feature/your-feature-name
+# or
+git checkout -b fix/your-bug-fix-name
+```
+
+**Branch naming conventions**:
+- Features: `feature/descriptive-name`
+- Bug fixes: `fix/descriptive-name`
+- Documentation: `docs/descriptive-name`
+- Chores: `chore/descriptive-name`
+
 ## Response Format
 
 When asked to help with technical decisions, provide:
