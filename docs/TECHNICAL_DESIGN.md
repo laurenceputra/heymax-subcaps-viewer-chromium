@@ -64,18 +64,78 @@ window.XMLHttpRequest = function() {
 };
 ```
 
-### Patch Monitoring
+### Patch Monitoring with Exponential Backoff
 
-A continuous monitoring system checks every 1000ms if the patches are still active:
+A continuous monitoring system checks if the patches are still active. The system uses exponential backoff to minimize CPU/battery usage when patches are stable:
+
+**Interval Configuration:**
+- **Minimum Interval**: 1 second (initial check frequency)
+- **Maximum Interval**: 60 seconds (after extended stable periods)
+- **Backoff Multiplier**: 1.5x (increase by 50% each cycle)
+- **Stability Threshold**: 10 consecutive stable checks before increasing interval
+
+**Behavior:**
+1. Starts with immediate verification check when script loads
+2. Checks patches every 1 second initially
+3. After 10 stable checks, interval increases by 1.5x
+4. Continues increasing until reaching 60-second maximum
+5. Resets to 1 second immediately when patch tampering is detected
+
+**Detection Method:**
+- **Fetch**: Checks for `patchedVersion` marker property on fetch function
+- **XHR**: Compares current prototype methods against stored originals
 
 ```javascript
-setInterval(() => {
-  if (window.fetch !== patchedFetch || window.XMLHttpRequest !== PatchedXHR) {
-    console.warn('Patches overwritten, re-applying...');
-    reapplyPatches();
+// Patch monitoring with exponential backoff
+let patchCheckInterval = 1000; // Start at 1 second
+const MIN_CHECK_INTERVAL = 1000;
+const MAX_CHECK_INTERVAL = 60000;
+const BACKOFF_MULTIPLIER = 1.5;
+let consecutiveStableChecks = 0;
+const STABLE_CHECKS_THRESHOLD = 10;
+
+function checkAndReapplyPatches() {
+  let patchesOverwritten = false;
+  
+  // Check fetch marker
+  if (!targetWindow.fetch.patchedVersion) {
+    targetWindow.fetch = createFetchInterceptor();
+    targetWindow.fetch.patchedVersion = true;
+    patchesOverwritten = true;
   }
-}, 1000);
+  
+  // Check XHR methods
+  if (targetWindow.XMLHttpRequest.prototype.open !== currentXHROpen) {
+    // Re-apply XHR patches
+    patchesOverwritten = true;
+  }
+  
+  // Adjust interval based on stability
+  if (patchesOverwritten) {
+    consecutiveStableChecks = 0;
+    patchCheckInterval = MIN_CHECK_INTERVAL;
+  } else {
+    consecutiveStableChecks++;
+    if (consecutiveStableChecks >= STABLE_CHECKS_THRESHOLD) {
+      patchCheckInterval = Math.min(
+        patchCheckInterval * BACKOFF_MULTIPLIER,
+        MAX_CHECK_INTERVAL
+      );
+      consecutiveStableChecks -= STABLE_CHECKS_THRESHOLD;
+    }
+  }
+  
+  setTimeout(checkAndReapplyPatches, patchCheckInterval);
+}
+
+// Immediate initial check
+checkAndReapplyPatches();
 ```
+
+**Performance Benefits:**
+- Initial responsiveness: 1s checks for quick recovery
+- Long-term efficiency: 60s checks for minimal CPU/battery impact
+- Adaptive: Automatically resets to fast mode when issues detected
 
 ## Data Storage Architecture
 
@@ -336,7 +396,9 @@ The Tampermonkey implementation runs with elevated privileges via GM_* APIs, all
 
 ### CPU Usage
 
-- Patch monitoring: Every 1000ms (minimal CPU impact)
+- Patch monitoring: Uses exponential backoff (1s initially, up to 60s when stable)
+- Initial check frequency: Every 1 second for quick detection
+- Stable state frequency: Every 60 seconds (minimal CPU impact)
 - Button visibility check: Every 500ms (only on card pages)
 - Calculation: On-demand when button clicked
 
