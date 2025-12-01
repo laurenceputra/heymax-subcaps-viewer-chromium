@@ -454,6 +454,11 @@
             "SINGPOST-SAM", "RazerPay", "NORWDS"
         ];
         
+        // Build regex pattern for efficient prefix matching (compiled once)
+        const merchantPrefixPattern = new RegExp(
+            '^(' + blacklistMerchantPrefixes.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')'
+        );
+        
         const roundDownToNearestFive = (amount) => Math.floor(amount / 5) * 5;
         
         const getBlacklistReason = (transaction) => {
@@ -463,10 +468,9 @@
             }
             
             if (transaction.merchant_name) {
-                for (const prefix of blacklistMerchantPrefixes) {
-                    if (transaction.merchant_name.startsWith(prefix)) {
-                        return `Blacklisted merchant prefix: ${prefix}`;
-                    }
+                const match = transaction.merchant_name.match(merchantPrefixPattern);
+                if (match) {
+                    return `Blacklisted merchant prefix: ${match[1]}`;
                 }
             }
             
