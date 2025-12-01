@@ -584,31 +584,6 @@
                             date: transaction.transaction_date || transaction.date
                         });
                     }
-                } else if (transaction.payment_tag === 'online') {
-                    const mccCode = parseInt(transaction.mcc_code, 10);
-                    if (ppvShoppingMcc.has(mccCode) || ppvDiningMcc.has(mccCode) || ppvEntertainmentMcc.has(mccCode)) {
-                        const roundedAmount = roundDownToNearestFive(transaction.base_currency_amount);
-                        onlineBucket += roundedAmount;
-                        if (includeDetails) {
-                            transactionDetails.included.online.push({
-                                merchant: transaction.merchant_name || 'Unknown',
-                                amount: transaction.base_currency_amount,
-                                roundedAmount: roundedAmount,
-                                mcc: mccCode,
-                                date: transaction.transaction_date || transaction.date
-                            });
-                        }
-                    } else {
-                        if (includeDetails) {
-                            transactionDetails.excluded.notEligible.push({
-                                merchant: transaction.merchant_name || 'Unknown',
-                                amount: transaction.base_currency_amount,
-                                mcc: mccCode,
-                                reason: 'MCC not in eligible categories',
-                                date: transaction.transaction_date || transaction.date
-                            });
-                        }
-                    }
                 } else {
                     if (includeDetails) {
                         transactionDetails.excluded.notEligible.push({
