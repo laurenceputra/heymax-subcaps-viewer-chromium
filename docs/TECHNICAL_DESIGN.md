@@ -140,7 +140,7 @@ Card IDs are extracted from URLs using regex patterns.
 ### UOB PPV (Preferred Platinum Visa) Logic
 
 #### Contactless Bucket ($600 limit)
-- Filters transactions where `payment_mode === 'contactless'`
+- Filters transactions where `payment_tag === 'contactless'`
 - Excludes blacklisted transactions
 - Rounds down each transaction to nearest $5
 - Sums up to $600 maximum
@@ -168,7 +168,7 @@ Card IDs are extracted from URLs using regex patterns.
 - **Note**: Foreign currency transactions are NOT counted in contactless bucket
 
 #### Contactless Bucket ($1,200 limit)
-- Filters transactions where `payment_mode === 'contactless'`
+- Filters transactions where `payment_tag === 'contactless'`
 - Excludes foreign currency transactions (already counted above)
 - Excludes blacklisted transactions
 - Sums all eligible contactless transactions (no rounding)
