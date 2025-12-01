@@ -420,6 +420,52 @@
     // PART 5: UI COMPONENTS
     // ============================================================================
 
+    // ============================================================================
+    // PART 5.1: MCC AND BLACKLIST CONSTANTS (Module-level for reuse)
+    // ============================================================================
+    
+    // MCC code Sets for O(1) lookup - created once and reused
+    const MCC_PPV_SHOPPING = new Set([4816, 5262, 5306, 5309, 5310, 5311, 5331, 5399, 5611, 5621, 5631, 5641, 5651, 5661, 5691, 5699, 5732, 5733, 5734, 5735, 5912, 5942, 5944, 5945, 5946, 5947, 5948, 5949, 5964, 5965, 5966, 5967, 5968, 5969, 5970, 5992, 5999]);
+    const MCC_PPV_DINING = new Set([5811, 5812, 5814, 5333, 5411, 5441, 5462, 5499, 8012, 9751]);
+    const MCC_PPV_ENTERTAINMENT = new Set([7278, 7832, 7841, 7922, 7991, 7996, 7998, 7999]);
+    const MCC_BLACKLIST = new Set([4829, 4900, 5199, 5960, 5965, 5993, 6012, 6050, 6051, 6211, 6300, 6513, 6529, 6530, 6534, 6540, 7349, 7511, 7523, 7995, 8062, 8211, 8220, 8241, 8244, 8249, 8299, 8398, 8661, 8651, 8699, 8999, 9211, 9222, 9223, 9311, 9402, 9405, 9399]);
+    
+    // Merchant name blacklist - created once and reused
+    const BLACKLIST_MERCHANT_PREFIXES = [
+        "AXS", "AMAZE", "AMAZE* TRANSIT", "BANC DE BINARY", "BANCDEBINARY.COM",
+        "EZ LINK PTE LTD (FEVO)", "EZ Link transport", "EZ Link", "EZ-LINK (IMAGINE CARD)",
+        "EZ-Link EZ-Reload (ATU)", "EZLINK", "EzLink", "EZ-LINK", "FlashPay ATU",
+        "MB * MONEYBOOKERS.COM", "NETS VCASHCARD", "OANDA ASIA PAC", "OANDAASIAPA",
+        "PAYPAL * BIZCONSULTA", "PAYPAL * CAPITALROYA", "PAYPAL * OANDAASIAPA",
+        "Saxo Cap Mkts Pte Ltd", "SKR*SKRILL.COM", "SKR*xglobalmarkets.com", "SKYFX.COM",
+        "TRANSIT", "WWW.IGMARKETS.COM.SG", "IPAYMY", "RWS-LEVY", "SMOOVE PAY",
+        "SINGPOST-SAM", "RazerPay", "NORWDS"
+    ];
+
+    // Helper functions at module level (created once)
+    const roundDownToNearestFive = (amount) => Math.floor(amount / 5) * 5;
+    
+    const getBlacklistReason = (transaction) => {
+        const mccCode = parseInt(transaction.mcc_code, 10);
+        if (MCC_BLACKLIST.has(mccCode)) {
+            return `Blacklisted MCC ${mccCode}`;
+        }
+        
+        if (transaction.merchant_name) {
+            for (const prefix of BLACKLIST_MERCHANT_PREFIXES) {
+                if (transaction.merchant_name.startsWith(prefix)) {
+                    return `Blacklisted merchant prefix: ${prefix}`;
+                }
+            }
+        }
+        
+        return null;
+    };
+    
+    const isEligibleForPPVOnline = (mccCode) => {
+        return MCC_PPV_SHOPPING.has(mccCode) || MCC_PPV_DINING.has(mccCode) || MCC_PPV_ENTERTAINMENT.has(mccCode);
+    };
+
     // Extract card ID from URL
     function extractCardIdFromUrl() {
         const match = window.location.pathname.match(/\/cards\/your-cards\/([a-f0-9]+)/);
@@ -428,43 +474,6 @@
 
     // Calculate buckets from transaction data
     function calculateBuckets(apiResponse, cardShortName = 'UOB PPV', includeDetails = false) {
-        // Use Sets for O(1) lookup performance instead of arrays
-        const ppvShoppingMcc = new Set([4816, 5262, 5306, 5309, 5310, 5311, 5331, 5399, 5611, 5621, 5631, 5641, 5651, 5661, 5691, 5699, 5732, 5733, 5734, 5735, 5912, 5942, 5944, 5945, 5946, 5947, 5948, 5949, 5964, 5965, 5966, 5967, 5968, 5969, 5970, 5992, 5999]);
-        const ppvDiningMcc = new Set([5811, 5812, 5814, 5333, 5411, 5441, 5462, 5499, 8012, 9751]);
-        const ppvEntertainmentMcc = new Set([7278, 7832, 7841, 7922, 7991, 7996, 7998, 7999]);
-        
-        const blacklistMcc = new Set([4829, 4900, 5199, 5960, 5965, 5993, 6012, 6050, 6051, 6211, 6300, 6513, 6529, 6530, 6534, 6540, 7349, 7511, 7523, 7995, 8062, 8211, 8220, 8241, 8244, 8249, 8299, 8398, 8661, 8651, 8699, 8999, 9211, 9222, 9223, 9311, 9402, 9405, 9399]);
-        
-        const blacklistMerchantPrefixes = [
-            "AXS", "AMAZE", "AMAZE* TRANSIT", "BANC DE BINARY", "BANCDEBINARY.COM",
-            "EZ LINK PTE LTD (FEVO)", "EZ Link transport", "EZ Link", "EZ-LINK (IMAGINE CARD)",
-            "EZ-Link EZ-Reload (ATU)", "EZLINK", "EzLink", "EZ-LINK", "FlashPay ATU",
-            "MB * MONEYBOOKERS.COM", "NETS VCASHCARD", "OANDA ASIA PAC", "OANDAASIAPA",
-            "PAYPAL * BIZCONSULTA", "PAYPAL * CAPITALROYA", "PAYPAL * OANDAASIAPA",
-            "Saxo Cap Mkts Pte Ltd", "SKR*SKRILL.COM", "SKR*xglobalmarkets.com", "SKYFX.COM",
-            "TRANSIT", "WWW.IGMARKETS.COM.SG", "IPAYMY", "RWS-LEVY", "SMOOVE PAY",
-            "SINGPOST-SAM", "RazerPay", "NORWDS"
-        ];
-        
-        const roundDownToNearestFive = (amount) => Math.floor(amount / 5) * 5;
-        
-        const getBlacklistReason = (transaction) => {
-            const mccCode = parseInt(transaction.mcc_code, 10);
-            if (blacklistMcc.has(mccCode)) {
-                return `Blacklisted MCC ${mccCode}`;
-            }
-            
-            if (transaction.merchant_name) {
-                for (const prefix of blacklistMerchantPrefixes) {
-                    if (transaction.merchant_name.startsWith(prefix)) {
-                        return `Blacklisted merchant prefix: ${prefix}`;
-                    }
-                }
-            }
-            
-            return null;
-        };
-        
         const transactionDetails = includeDetails ? {
             included: {
                 contactless: [],
@@ -477,10 +486,6 @@
                 wrongPaymentMethod: []
             }
         } : null;
-
-        const isEligibleForPPVOnline = (mccCode) => {
-            return ppvShoppingMcc.has(mccCode) || ppvDiningMcc.has(mccCode) || ppvEntertainmentMcc.has(mccCode);
-        };
 
         if (cardShortName === 'UOB VS') {
             return calculateVSBuckets(apiResponse, getBlacklistReason, transactionDetails, includeDetails);
