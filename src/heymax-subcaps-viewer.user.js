@@ -272,13 +272,16 @@
             const method = this._method;
             
             if (url && typeof url === 'string') {
-                this.addEventListener('load', function() {
+                // Use named function for proper cleanup
+                const loadHandler = function() {
                     if (this.readyState === 4 && this.status >= 200 && this.status < 300) {
                         const shouldLog = shouldLogUrl(url);
                         debugLog(`%c[HeyMax SubCaps Viewer] 📡 XHR Response: ${method} ${url} - Status: ${this.status} - Will Log: ${shouldLog}`, 
                             shouldLog ? 'color: #4CAF50;' : 'color: #9E9E9E;');
                         
                         if (!shouldLog) {
+                            // Clean up listener before early return
+                            this.removeEventListener('load', loadHandler);
                             return;
                         }
 
@@ -310,7 +313,12 @@
                             errorLog('Error processing XHR response:', error);
                         }
                     }
-                });
+                    
+                    // Always clean up listener after execution
+                    this.removeEventListener('load', loadHandler);
+                };
+                
+                this.addEventListener('load', loadHandler);
             }
             
             return originalXHRSend.apply(this, args);
