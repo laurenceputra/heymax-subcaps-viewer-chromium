@@ -416,11 +416,12 @@
 
     // Calculate buckets from transaction data
     function calculateBuckets(apiResponse, cardShortName = 'UOB PPV', includeDetails = false) {
-        const ppvShoppingMcc = [4816, 5262, 5306, 5309, 5310, 5311, 5331, 5399, 5611, 5621, 5631, 5641, 5651, 5661, 5691, 5699, 5732, 5733, 5734, 5735, 5912, 5942, 5944, 5945, 5946, 5947, 5948, 5949, 5964, 5965, 5966, 5967, 5968, 5969, 5970, 5992, 5999];
-        const ppvDiningMcc = [5811, 5812, 5814, 5333, 5411, 5441, 5462, 5499, 8012, 9751];
-        const ppvEntertainmentMcc = [7278, 7832, 7841, 7922, 7991, 7996, 7998, 7999];
+        // Use Sets for O(1) lookup performance instead of arrays
+        const ppvShoppingMcc = new Set([4816, 5262, 5306, 5309, 5310, 5311, 5331, 5399, 5611, 5621, 5631, 5641, 5651, 5661, 5691, 5699, 5732, 5733, 5734, 5735, 5912, 5942, 5944, 5945, 5946, 5947, 5948, 5949, 5964, 5965, 5966, 5967, 5968, 5969, 5970, 5992, 5999]);
+        const ppvDiningMcc = new Set([5811, 5812, 5814, 5333, 5411, 5441, 5462, 5499, 8012, 9751]);
+        const ppvEntertainmentMcc = new Set([7278, 7832, 7841, 7922, 7991, 7996, 7998, 7999]);
         
-        const blacklistMcc = [4829, 4900, 5199, 5960, 5965, 5993, 6012, 6050, 6051, 6211, 6300, 6513, 6529, 6530, 6534, 6540, 7349, 7511, 7523, 7995, 8062, 8211, 8220, 8241, 8244, 8249, 8299, 8398, 8661, 8651, 8699, 8999, 9211, 9222, 9223, 9311, 9402, 9405, 9399];
+        const blacklistMcc = new Set([4829, 4900, 5199, 5960, 5965, 5993, 6012, 6050, 6051, 6211, 6300, 6513, 6529, 6530, 6534, 6540, 7349, 7511, 7523, 7995, 8062, 8211, 8220, 8241, 8244, 8249, 8299, 8398, 8661, 8651, 8699, 8999, 9211, 9222, 9223, 9311, 9402, 9405, 9399]);
         
         const blacklistMerchantPrefixes = [
             "AXS", "AMAZE", "AMAZE* TRANSIT", "BANC DE BINARY", "BANCDEBINARY.COM",
@@ -437,7 +438,7 @@
         
         const getBlacklistReason = (transaction) => {
             const mccCode = parseInt(transaction.mcc_code, 10);
-            if (blacklistMcc.includes(mccCode)) {
+            if (blacklistMcc.has(mccCode)) {
                 return `Blacklisted MCC ${mccCode}`;
             }
             
@@ -559,7 +560,7 @@
                     }
                 } else if (transaction.payment_tag === 'online') {
                     const mccCode = parseInt(transaction.mcc_code, 10);
-                    if (ppvShoppingMcc.includes(mccCode) || ppvDiningMcc.includes(mccCode) || ppvEntertainmentMcc.includes(mccCode)) {
+                    if (ppvShoppingMcc.has(mccCode) || ppvDiningMcc.has(mccCode) || ppvEntertainmentMcc.has(mccCode)) {
                         const roundedAmount = roundDownToNearestFive(transaction.base_currency_amount);
                         onlineBucket += roundedAmount;
                         if (includeDetails) {
@@ -1190,8 +1191,15 @@
 
         observer.observe(document.body, { childList: true, subtree: true });
 
-        // Also periodically check for button visibility (in case storage updates)
-        setInterval(updateButtonVisibility, 2000);
+        // Listen for storage changes instead of polling
+        window.addEventListener('storage', updateButtonVisibility);
+        
+        // Check visibility on page visibility changes (more efficient than polling)
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                updateButtonVisibility();
+            }
+        });
     }
 
     // Wait for DOM to be ready
