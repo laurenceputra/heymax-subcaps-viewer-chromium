@@ -331,7 +331,7 @@
     const MAX_CHECK_INTERVAL = 60000; // Maximum 60 seconds
     const BACKOFF_MULTIPLIER = 1.5; // Increase by 50% each time
     let consecutiveStableChecks = 0;
-    const STABLE_CHECKS_THRESHOLD = 10; // Backoff happens on the 10th stable check (inclusive)
+    const STABLE_CHECKS_THRESHOLD = 10; // After 10 stable checks, interval increases
 
     // Store references to the current XHR interceptors for comparison
     let currentXHROpen = initialXHROpen;
@@ -392,7 +392,7 @@
                     infoLog(`Patches stable, increasing check interval to ${patchCheckInterval}ms`, '#2196F3');
                 }
                 
-                consecutiveStableChecks -= STABLE_CHECKS_THRESHOLD; // Allow carry-over for faster backoff
+                consecutiveStableChecks -= STABLE_CHECKS_THRESHOLD; // Allow carry-over for faster progression to higher intervals
             }
         }
 
