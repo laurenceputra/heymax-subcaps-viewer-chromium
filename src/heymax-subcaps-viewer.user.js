@@ -331,7 +331,7 @@
     const MAX_CHECK_INTERVAL = 60000; // Maximum 60 seconds
     const BACKOFF_MULTIPLIER = 1.5; // Increase by 50% each time
     let consecutiveStableChecks = 0;
-    const STABLE_CHECKS_THRESHOLD = 10; // If stable for 10 checks, increase interval
+    const STABLE_CHECKS_THRESHOLD = 10; // After 10 stable checks, interval increases
 
     // Store references to the current XHR interceptors for comparison
     let currentXHROpen = initialXHROpen;
@@ -342,10 +342,14 @@
 
         // Check if fetch was overwritten (marker property missing or false)
         if (typeof targetWindow.fetch !== 'function' || !targetWindow.fetch.patchedVersion) {
-            infoLog('⚠️ Fetch patch overwritten, re-applying...', '#FF9800');
-            targetWindow.fetch = createFetchInterceptor();
-            targetWindow.fetch.patchedVersion = true;
-            patchesOverwritten = true;
+            if (typeof originalFetch !== 'function') {
+                infoLog('❌ Cannot re-apply fetch patch: originalFetch is not a function. Skipping patch to avoid breaking fetch.', '#F44336');
+            } else {
+                infoLog('⚠️ Fetch patch overwritten, re-applying...', '#FF9800');
+                targetWindow.fetch = createFetchInterceptor();
+                targetWindow.fetch.patchedVersion = true;
+                patchesOverwritten = true;
+            }
         }
 
         // Check if XHR was overwritten
@@ -354,8 +358,10 @@
             infoLog('⚠️ XHR patch overwritten, re-applying...', '#FF9800');
             
             const { openInterceptor, sendInterceptor } = createXHRInterceptors();
-            targetWindow.XMLHttpRequest.prototype.open = openInterceptor;
-            targetWindow.XMLHttpRequest.prototype.send = sendInterceptor;
+            Object.assign(targetWindow.XMLHttpRequest.prototype, {
+                open: openInterceptor,
+                send: sendInterceptor
+            });
             
             // Update stored references
             currentXHROpen = openInterceptor;
@@ -383,10 +389,10 @@
                 
                 if (newInterval !== patchCheckInterval) {
                     patchCheckInterval = newInterval;
-                    debugLog(`[HeyMax SubCaps Viewer] Patches stable, increasing check interval to ${patchCheckInterval}ms`);
+                    infoLog(`Patches stable, increasing check interval to ${patchCheckInterval}ms`, '#2196F3');
                 }
                 
-                consecutiveStableChecks = 0; // Reset counter for next backoff cycle
+                consecutiveStableChecks -= STABLE_CHECKS_THRESHOLD; // Allow carry-over for faster progression to higher intervals
             }
         }
 
@@ -394,8 +400,8 @@
         setTimeout(checkAndReapplyPatches, patchCheckInterval);
     }
 
-    // Start patch monitoring
-    setTimeout(checkAndReapplyPatches, patchCheckInterval);
+    // Start patch monitoring with immediate initial check
+    checkAndReapplyPatches();
     infoLog('🛡️ Patch protection initialized with exponential backoff', '#4CAF50');
 
     // ============================================================================
