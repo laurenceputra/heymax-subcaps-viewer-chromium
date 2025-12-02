@@ -500,7 +500,23 @@
         let foreignCurrencyBucket = 0;
 
         apiResponse.forEach((transactionObj) => {
+            // Defensive input validation
+            if (!transactionObj || typeof transactionObj !== 'object') {
+                debugLog('[HeyMax SubCaps Viewer] Invalid transaction object, skipping:', transactionObj);
+                return;
+            }
+            
             const transaction = transactionObj.transaction;
+            
+            if (!transaction || typeof transaction !== 'object') {
+                debugLog('[HeyMax SubCaps Viewer] Missing transaction property, skipping:', transactionObj);
+                return;
+            }
+            
+            if (typeof transaction.base_currency_amount !== 'number' || isNaN(transaction.base_currency_amount)) {
+                debugLog('[HeyMax SubCaps Viewer] Invalid base_currency_amount, skipping:', transaction);
+                return;
+            }
             
             const blacklistReason = getBlacklistReason(transaction);
             if (blacklistReason) {
@@ -509,8 +525,8 @@
                         merchant: transaction.merchant_name || 'Unknown',
                         amount: transaction.base_currency_amount,
                         reason: blacklistReason,
-                        mcc: transaction.mcc_code,
-                        date: transaction.transaction_date || transaction.date
+                        mcc: transaction.mcc_code || 'N/A',
+                        date: transaction.transaction_date || transaction.date || 'Unknown'
                     });
                 }
                 return;
@@ -523,7 +539,7 @@
                         merchant: transaction.merchant_name || 'Unknown',
                         amount: transaction.base_currency_amount,
                         currency: transaction.original_currency,
-                        date: transaction.transaction_date || transaction.date
+                        date: transaction.transaction_date || transaction.date || 'Unknown'
                     });
                 }
             } else if (transaction.payment_tag === 'contactless') {
@@ -532,7 +548,7 @@
                     transactionDetails.included.contactless.push({
                         merchant: transaction.merchant_name || 'Unknown',
                         amount: transaction.base_currency_amount,
-                        date: transaction.transaction_date || transaction.date
+                        date: transaction.transaction_date || transaction.date || 'Unknown'
                     });
                 }
             } else {
@@ -541,7 +557,7 @@
                         merchant: transaction.merchant_name || 'Unknown',
                         amount: transaction.base_currency_amount,
                         paymentMethod: transaction.payment_tag || 'unknown',
-                        date: transaction.transaction_date || transaction.date
+                        date: transaction.transaction_date || transaction.date || 'Unknown'
                     });
                 }
             }
@@ -560,7 +576,23 @@
         let onlineBucket = 0;
 
         apiResponse.forEach((transactionObj) => {
+            // Defensive input validation
+            if (!transactionObj || typeof transactionObj !== 'object') {
+                debugLog('[HeyMax SubCaps Viewer] Invalid transaction object, skipping:', transactionObj);
+                return;
+            }
+            
             const transaction = transactionObj.transaction;
+            
+            if (!transaction || typeof transaction !== 'object') {
+                debugLog('[HeyMax SubCaps Viewer] Missing transaction property, skipping:', transactionObj);
+                return;
+            }
+            
+            if (typeof transaction.base_currency_amount !== 'number' || isNaN(transaction.base_currency_amount)) {
+                debugLog('[HeyMax SubCaps Viewer] Invalid base_currency_amount, skipping:', transaction);
+                return;
+            }
             
             const blacklistReason = getBlacklistReason(transaction);
             if (blacklistReason) {
@@ -569,8 +601,8 @@
                         merchant: transaction.merchant_name || 'Unknown',
                         amount: transaction.base_currency_amount,
                         reason: blacklistReason,
-                        mcc: transaction.mcc_code,
-                        date: transaction.transaction_date || transaction.date
+                        mcc: transaction.mcc_code || 'N/A',
+                        date: transaction.transaction_date || transaction.date || 'Unknown'
                     });
                 }
                 return;
@@ -584,12 +616,12 @@
                         merchant: transaction.merchant_name || 'Unknown',
                         amount: transaction.base_currency_amount,
                         roundedAmount: roundedAmount,
-                        date: transaction.transaction_date || transaction.date
+                        date: transaction.transaction_date || transaction.date || 'Unknown'
                     });
                 }
             } else if (transaction.payment_tag === 'online') {
-                const mccCode = parseInt(transaction.mcc_code, 10);
-                if (isEligibleForPPVOnline(mccCode)) {
+                const mccCode = transaction.mcc_code ? parseInt(transaction.mcc_code, 10) : NaN;
+                if (!isNaN(mccCode) && isEligibleForPPVOnline(mccCode)) {
                     const roundedAmount = roundDownToNearestFive(transaction.base_currency_amount);
                     onlineBucket += roundedAmount;
                     if (includeDetails) {
@@ -597,8 +629,8 @@
                             merchant: transaction.merchant_name || 'Unknown',
                             amount: transaction.base_currency_amount,
                             roundedAmount: roundedAmount,
-                            mcc: mccCode,
-                            date: transaction.transaction_date || transaction.date
+                            mcc: isNaN(mccCode) ? 'N/A' : mccCode,
+                            date: transaction.transaction_date || transaction.date || 'Unknown'
                         });
                     }
                 } else {
@@ -606,9 +638,9 @@
                         transactionDetails.excluded.notEligible.push({
                             merchant: transaction.merchant_name || 'Unknown',
                             amount: transaction.base_currency_amount,
-                            mcc: mccCode,
+                            mcc: isNaN(mccCode) ? 'N/A' : mccCode,
                             reason: 'MCC not in eligible categories',
-                            date: transaction.transaction_date || transaction.date
+                            date: transaction.transaction_date || transaction.date || 'Unknown'
                         });
                     }
                 }
@@ -618,7 +650,7 @@
                         merchant: transaction.merchant_name || 'Unknown',
                         amount: transaction.base_currency_amount,
                         paymentMethod: transaction.payment_tag || 'unknown',
-                        date: transaction.transaction_date || transaction.date
+                        date: transaction.transaction_date || transaction.date || 'Unknown'
                     });
                 }
             }
