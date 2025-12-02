@@ -1235,6 +1235,15 @@
 
         observer.observe(document.body, { childList: true, subtree: true });
 
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+                debounceTimer = null;
+            }
+            observer.disconnect();
+        });
+
         // Listen for storage changes instead of polling
         window.addEventListener('storage', updateButtonVisibility);
         
